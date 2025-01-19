@@ -2,5 +2,6 @@
     "title":"凡人日记",
     "subTitle":"是生活玩弄了你，还是你享受了生活！",
     "avatarUrl":"https://avatars.githubusercontent.com/u/64282354?v=4",
-    "GMEEK_VERSION":"last"
+    "GMEEK_VERSION":"last",
+    "startSite":"01/19/2025"  // 添加网站运行开始日期
 }
