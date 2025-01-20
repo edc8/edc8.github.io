@@ -1,4 +1,232 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>凡人日记</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>凡人日记</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Sun, 19 Jan 2025 13:22:52 +0000</lastBuildDate><managingEditor>凡人日记</managingEditor><ttl>60</ttl><webMaster>凡人日记</webMaster><item><title>记录下github搭建的博客</title><link>https://edc8.github.io/post/ji-lu-xia-github-da-jian-de-bo-ke.html</link><description>## 2025年-1-19; 16:59 仅记录！
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>凡人日记</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>凡人日记</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Mon, 20 Jan 2025 02:53:49 +0000</lastBuildDate><managingEditor>凡人日记</managingEditor><ttl>60</ttl><webMaster>凡人日记</webMaster><item><title>python 编写的微信dump文件分析机器人</title><link>https://edc8.github.io/post/python%20-bian-xie-de-wei-xin-dump-wen-jian-fen-xi-ji-qi-ren.html</link><description>## 得益于AI技术的普及，让我这个非专业选手也能实现使用python开发出自己想要的功能
+### 在此记录贴出代码用作备份的 
+### 无自动回复功能版 
+```python
+import os
+import time
+import tkinter as tk
+from tkinter import scrolledtext, messagebox
+import requests
+import json
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import threading
+import wxauto
+import win32clipboard
+import pythoncom
+
+
+class DumpFileHandler(FileSystemEventHandler):
+    def __init__(self, text_widget, upload_callback):
+        self.text_widget = text_widget
+        self.upload_callback = upload_callback
+        self.event_processed = {}  
+
+    def on_created(self, event):
+        self.handle_event(event, '新文件创建')
+
+    def on_modified(self, event):
+        self.handle_event(event, '文件修改')
+
+    def on_deleted(self, event):
+        self.handle_event(event, '文件删除')
+
+    def handle_event(self, event, event_type):
+        if event.is_directory:
+            return
+        file_path = event.src_path
+        if file_path.endswith(('.dump', '.bin', '.txt')):
+            if file_path not in self.event_processed:
+                self.text_widget.insert(tk.END, f'{event_type}: {file_path}\n')
+                self.text_widget.yview(tk.END)
+                self.upload_callback(filepath=file_path)  
+                self.event_processed[file_path] = True
+            else:
+                print(f'已处理过 {file_path} 的{event_type}事件，跳过重复处理')
+
+
+def upload(filepath: str) -&gt; str:
+    url = 'http://47.98.235.44:5005/upload'
+    try:
+        with open(filepath, 'rb') as file:
+            files = [
+                ('upload_dump', (os.path.basename(filepath), file, 'application/octet-stream'))
+            ]
+            response = requests.post(url, files=files)
+            if response.status_code == 200:
+                return response.text
+            else:
+                raise Exception(f'Upload failed with status code {response.status_code}')
+    except Exception as e:
+        raise Exception(f'Error uploading file: {str(e)}')
+
+
+def analysis(uuid: str) -&gt; str:
+    url = 'http://47.98.235.44:5005/analysis'
+    payload = json.dumps({'uuid': uuid})
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    try:
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code == 200:
+            return response.text
+        else:
+            raise Exception(f'Analysis request failed with status code {response.status_code}')
+    except Exception as e:
+        raise Exception(f'Error sending analysis request: {str(e)}')
+
+
+def copy_to_clipboard(output_text: tk.Text):
+    try:
+        root.clipboard_clear()
+        result = output_text.get(1.0, tk.END).strip()
+        root.clipboard_append(result)
+        output_text.insert(tk.END, '分析结果已复制到剪贴板\n')
+    except Exception as e:
+        output_text.insert(tk.END, f'错误: 复制到剪贴board时发生错误: {str(e)}\n')
+
+
+def process_file(filepath: str, output_text: tk.Text, target_group_name):
+    def build_message(data):
+        messages = []
+        if data and data[0]:
+            for item in data[0]:
+                if isinstance(item, dict):
+                    name = item.get('name', '')
+                    values = item.get('value', [])
+                    for value in values:
+                        if isinstance(value, dict):
+                            b = value.get('b', '')
+                            messages.append(f'{name}: {b}')
+        return '\n'.join(messages) if messages else None
+
+    def handle_analysis_result(analysis_data):
+        if analysis_data.get('code') == 200:
+            data = analysis_data.get('data', [])
+            result_message = build_message(data)
+            if result_message:
+                output_text.delete(1.0, tk.END)
+                output_text.insert(tk.END, f'解析成功，返回数据:\n{result_message}\n')
+                copy_to_clipboard(output_text)
+                send_to_wechat(result_message, target_group_name)  # 调用发送微信消息的函数并传入群名称
+                return result_message
+            else:
+                warning_message = '该数据暂未收录'
+                output_text.delete(1.0, tk.END)
+                output_text.insert(tk.END, warning_message + '\n')
+                copy_to_clipboard(output_text)
+                send_to_wechat(warning_message, target_group_name)  # 调用发送微信消息的函数并传入群名称
+                return warning_message
+        else:
+            warning_message = f'警告: 解析失败: {analysis_data.get('message')}\n'
+            output_text.delete(1.0, tk.END)
+            output_text.insert(tk.END, warning_message)
+            copy_to_clipboard(output_text)
+            send_to_wechat(warning_message, target_group_name)  # 调用发送微信消息的函数并传入群名称
+            return warning_message
+
+    def handle_file_deletion(filepath):
+        import subprocess
+        import sys
+        if sys.platform.startswith('win32'):
+            command = f'del /f /q '{filepath}''
+        else:
+            command = f'rm -f '{filepath}''
+        try:
+            subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output_text.insert(tk.END, f'文件 {filepath} 已成功删除\n')
+        except subprocess.CalledProcessError as e:
+            output_text.insert(tk.END, f'错误: 删除文件 {filepath} 时出错: {str(e)}\n')
+        except Exception as e:
+            output_text.insert(tk.END, f'其他错误: {str(e)}\n')
+
+    try:
+        result = upload(filepath)
+        response_data = json.loads(result)
+        uuid = response_data.get('uuid')
+        if uuid:
+            analysis_result = analysis(uuid)
+            analysis_data = json.loads(analysis_result)
+            message = handle_analysis_result(analysis_data)
+            handle_file_deletion(filepath)
+        else:
+            warning_message = '警告: 未能获取UUID\n'
+            output_text.delete(1.0, tk.END)
+            output_text.insert(tk.END, warning_message)
+            copy_to_clipboard(output_text)
+            send_to_wechat(warning_message, target_group_name)  # 调用发送微信消息的函数并传入群名称
+    except json.JSONDecodeError:
+        output_text.delete(1.0, tk.END)
+        output_text.insert(tk.END, '错误: 返回数据格式错误，无法解析JSON\n')
+        send_to_wechat('错误: 返回数据格式错误，无法解析JSON\n', target_group_name)  # 调用发送微信消息的函数并传入群名称
+    except Exception as e:
+        output_text.delete(1.0, tk.END)
+        output_text.insert(tk.END, f'错误: 发生错误: {str(e)}\n')
+        send_to_wechat(f'错误: 发生错误: {str(e)}\n', target_group_name)  # 调用发送微信消息的函数并传入群名称
+
+
+class MonitorApp:
+    def __init__(self, master):
+        self.master = master
+        self.master.title('文件监控工具')
+        self.master.geometry('500x450')  # 增加高度以容纳新组件
+
+        self.label_group = tk.Label(master, text='目标群名称:')  # 新增标签
+        self.label_group.pack(pady=10)
+
+        self.group_entry = tk.Entry(master, width=50)  # 新增输入框
+        self.group_entry.pack(pady=10)
+
+        self.label = tk.Label(master, text='监控目录:')
+        self.label.pack(pady=10)
+
+        self.directory_entry = tk.Entry(master, width=50)
+        self.directory_entry.pack(pady=10)
+
+        self.start_button = tk.Button(master, text='开始监控', command=self.start_monitoring)
+        self.start_button.pack(pady=10)
+
+        self.stop_button = tk.Button(master, text='停止监控', command=self.stop_monitoring)
+        self.stop_button.pack(pady=10)
+
+        self.output_text = scrolledtext.ScrolledText(master, width=60, height=15)
+        self.output_text.pack(pady=10)
+
+        self.observer = None
+        self.is_running = False
+
+    def start_monitoring(self):
+        group_name = self.group_entry.get().strip()  # 获取群名称
+        directory = self.directory_entry.get().strip()
+        if not os.path.isdir(directory):
+            messagebox.showerror('错误', '请输入有效的目录路径！')
+            return
+
+        self.is_running = True
+        self.output_text.insert(tk.END, f'开始监控目录: {directory}\n')
+        self.output_text.yview(tk.END)
+
+        event_handler = DumpFileHandler(self.output_text, lambda filepath: process_file(filepath, self.output_text, group_name))  # 传入群名称
+        self.observer = Observer()
+        self.observer.schedule(event_handler, directory, recursive=False)
+        self.observer.start()
+        threading.Thread(target=self.run_observer, daemon=True).start()
+
+    def run_observer(self):
+        try:
+            while self.is_running:
+                time.sleep(1)
+        except Exception as e:
+            self.output_text.insert(tk.END, f'监控出错: {str(e)}\n')
+            self.output_text.yview(tk.END)
+
+    def stop_monitoring(self):
+        self.is_running = False
+        if self.observer:
+            self.observer.stop()
+            self.observer.join()
+        self.output_text.insert(tk.END, '监控已停止。</description><guid isPermaLink="true">https://edc8.github.io/post/python%20-bian-xie-de-wei-xin-dump-wen-jian-fen-xi-ji-qi-ren.html</guid><pubDate>Mon, 20 Jan 2025 02:53:22 +0000</pubDate></item><item><title>记录下github搭建的博客</title><link>https://edc8.github.io/post/ji-lu-xia-github-da-jian-de-bo-ke.html</link><description>## 2025年-1-19; 16:59 仅记录！
 ###  基于github开源项目[Gmeek](https://blog.meekdai.com/)实现感谢作者的开源 !
 。</description><guid isPermaLink="true">https://edc8.github.io/post/ji-lu-xia-github-da-jian-de-bo-ke.html</guid><pubDate>Sun, 19 Jan 2025 08:59:55 +0000</pubDate></item></channel></rss>
