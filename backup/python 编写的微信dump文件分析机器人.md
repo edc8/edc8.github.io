@@ -642,8 +642,8 @@ if __name__ == "__main__":
 ```
 ## 实现效果图
 
-![Image](https://github.com/user-attachments/assets/3d8900f8-ea20-42b3-9f8f-a1ba3698b962)
+![Image](https://github.com/edc8/oss/blob/main/404724929-3d8900f8-ea20-42b3-9f8f-a1ba3698b962.png?raw=true)
 
-![Image](https://github.com/user-attachments/assets/5eb17cab-99b1-4c9b-947b-8abed81f2205)
+![Image](https://github.com/edc8/oss/blob/main/404725021-5eb17cab-99b1-4c9b-947b-8abed81f2205.png?raw=true)
 
 
