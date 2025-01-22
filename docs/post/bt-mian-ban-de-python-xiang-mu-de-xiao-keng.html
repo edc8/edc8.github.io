@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/64282354?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 这几天瞎逛youtube,发个爬取SSR链接的脚本 
+### 于是在AI加持下，配合飞书的webhook将自定义服务的消息推送至飞书便有有如下的代码；
+```python
+import requests
+import base64
+import json
+import pyaes
+import binascii
+from datetime import datetime
+
+
+def send_feishu_message(webhook_url, message):
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'msg_type': 'text',
+        'content': {
+            'text': message
+        }
+    }
+    response = requests.post(webhook_url, json=payload, headers=headers)
+    if response.status_code == 200:
+        print('消息发送成功')
+    else:
+        print(f'消息发送失败，状态码: {response.status_code}，错误信息: {response.text}')
+
+
+print('      H͜͡E͜͡L͜͡L͜͡O͜͡ ͜͡W͜͡O͜͡R͜͡L͜͡D͜͡ ͜͡E͜͡X͜͡T͜͡R͜͡A͜͡C͜͡ ͜͡S͜͡S͜͡ ͜͡N͜͡O͜͡D͜͡E͜͡')
+print('𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟')
+print('Author : 𝐼𝑢')
+print(f'Date   : {datetime.today().strftime('%Y-%m-%d')}')
+print('Version: 1.0')
+print('𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟')
+print('𝐼𝑢:')
+print(r'''
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⠤⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡴⠁⠀⡰⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⡎⢀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀
+⣀⠀⠀⠀⠀⠀⠀⡠⠬⡡⠬⡋⠀⡄⠀⠀⠀⠀⠀⠀⠀
+⡀⠁⠢⡀⠀⠀⢰⠠⢷⠰⠆⡅⠀⡇⠀⠀⠀⣀⠔⠂⡂
+⠱⡀⠀⠈⠒⢄⡸⡑⠊⢒⣂⣦⠄⢃⢀⠔⠈⠀⠀⡰⠁
+⠀⠱⡀⠀⠀⡰⣁⣼⡿⡿⢿⠃⠠⠚⠁⠀⠀⢀⠜⠀⠀
+⠀⠀⠐⢄⠜⠀⠈⠓⠒⠈⠁⠀⠀⠀⠀⠀⡰⠃⠀⠀⠀
+⠀⠀⢀⠊⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠾⡀⠀⠀⠀⠀
+⠀⠀⢸⣄⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡇⠀⠀⠀⠀
+⠀⠀⠸⢸⣳⠦⣍⣁⣀⣀⣀⣀⣠⠴⠚⠁⠇⠀⠀⠀⠀
+⠀⠀⠀⢳⣿⠄⠸⠢⠍⠉⠉⠀⠀⡠⢒⠎⠀⠀⠀⠀⠀
+⠀⠀⠀⠣⣀⠁⠒⡤⠤⢤⠀⠀⠐⠙⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠣⡀⡼⠀⠀⠈⠱⡒⠂⡸⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⢒⠁⠀⠀⠀⠀⠀⠀⠀
+''')
+
+
+a = 'http://api.skrapp.net/api/serverlist'
+b = {
+    'accept': '/',
+    'accept-language': 'zh-Hans-CN;q=1, en-CN;q=0.9',
+    'appversion': '1.3.1',
+    'user-agent': 'SkrKK/1.3.1 (iPhone; iOS 13.5; Scale/2.00)',
+    'content-type': 'application/x-www-form-urlencoded',
+    'Cookie': 'PHPSESSID=fnffo1ivhvt0ouo6ebqn86a0d4'
+}
+c = {'data': '4265a9c353cd8624fd2bc7b5d75d2f18b1b5e66ccd37e2dfa628bcb8f73db2f14ba98bc6a1d8d0d1c7ff1ef0823b11264d0addaba2bd6a30bdefe06f4ba994ed'}
+d = b'65151f8d966bf596'
+e = b'88ca0f0ea1ecf975'
+
+
+def f(g, d, e):
+    h = pyaes.AESModeOfOperationCBC(d, iv=e)
+    i = b''.join(h.decrypt(g[j:j+16]) for j in range(0, len(g), 16))
+    return i[:-i[-1]]
+
+
+j = requests.post(a, headers=b, data=c)
+
+
+if j.status_code == 200:
+    k = j.text.strip()
+    l = binascii.unhexlify(k)
+    m = f(l, d, e)
+    n = json.loads(m)
+    message_list = []
+    for o in n['data']:
+        p = f'aes-256-cfb:{o['password']}@{o['ip']}:{o['port']}'
+        q = base64.b64encode(p.encode('utf-8')).decode('utf-8')
+        r = f'ss://{q}#{o['title']}'
+        message_list.append(r)
+    # 飞书机器人的 Webhook 地址，需替换为实际地址
+    webhook_url = 'you Webhook 地址'
+    # 将列表中的消息组合成一个字符串
+    message = '\n'.join(message_list)
+    send_feishu_message(webhook_url, message)
+```
+## 宝塔遇到的坑；
+### 打算利用宝塔面板的定时执行，跑这个脚本推送到小飞书群组，结果 和之前了解的不一样了，折腾了几天时间 才无意间解决；下面贴出图片配置。">
+<meta property="og:title" content="bt面板的python项目的小坑">
+<meta property="og:description" content="## 这几天瞎逛youtube,发个爬取SSR链接的脚本 
+### 于是在AI加持下，配合飞书的webhook将自定义服务的消息推送至飞书便有有如下的代码；
+```python
+import requests
+import base64
+import json
+import pyaes
+import binascii
+from datetime import datetime
+
+
+def send_feishu_message(webhook_url, message):
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'msg_type': 'text',
+        'content': {
+            'text': message
+        }
+    }
+    response = requests.post(webhook_url, json=payload, headers=headers)
+    if response.status_code == 200:
+        print('消息发送成功')
+    else:
+        print(f'消息发送失败，状态码: {response.status_code}，错误信息: {response.text}')
+
+
+print('      H͜͡E͜͡L͜͡L͜͡O͜͡ ͜͡W͜͡O͜͡R͜͡L͜͡D͜͡ ͜͡E͜͡X͜͡T͜͡R͜͡A͜͡C͜͡ ͜͡S͜͡S͜͡ ͜͡N͜͡O͜͡D͜͡E͜͡')
+print('𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟')
+print('Author : 𝐼𝑢')
+print(f'Date   : {datetime.today().strftime('%Y-%m-%d')}')
+print('Version: 1.0')
+print('𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟')
+print('𝐼𝑢:')
+print(r'''
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⠤⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡴⠁⠀⡰⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⡎⢀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀
+⣀⠀⠀⠀⠀⠀⠀⡠⠬⡡⠬⡋⠀⡄⠀⠀⠀⠀⠀⠀⠀
+⡀⠁⠢⡀⠀⠀⢰⠠⢷⠰⠆⡅⠀⡇⠀⠀⠀⣀⠔⠂⡂
+⠱⡀⠀⠈⠒⢄⡸⡑⠊⢒⣂⣦⠄⢃⢀⠔⠈⠀⠀⡰⠁
+⠀⠱⡀⠀⠀⡰⣁⣼⡿⡿⢿⠃⠠⠚⠁⠀⠀⢀⠜⠀⠀
+⠀⠀⠐⢄⠜⠀⠈⠓⠒⠈⠁⠀⠀⠀⠀⠀⡰⠃⠀⠀⠀
+⠀⠀⢀⠊⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠾⡀⠀⠀⠀⠀
+⠀⠀⢸⣄⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡇⠀⠀⠀⠀
+⠀⠀⠸⢸⣳⠦⣍⣁⣀⣀⣀⣀⣠⠴⠚⠁⠇⠀⠀⠀⠀
+⠀⠀⠀⢳⣿⠄⠸⠢⠍⠉⠉⠀⠀⡠⢒⠎⠀⠀⠀⠀⠀
+⠀⠀⠀⠣⣀⠁⠒⡤⠤⢤⠀⠀⠐⠙⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠣⡀⡼⠀⠀⠈⠱⡒⠂⡸⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⢒⠁⠀⠀⠀⠀⠀⠀⠀
+''')
+
+
+a = 'http://api.skrapp.net/api/serverlist'
+b = {
+    'accept': '/',
+    'accept-language': 'zh-Hans-CN;q=1, en-CN;q=0.9',
+    'appversion': '1.3.1',
+    'user-agent': 'SkrKK/1.3.1 (iPhone; iOS 13.5; Scale/2.00)',
+    'content-type': 'application/x-www-form-urlencoded',
+    'Cookie': 'PHPSESSID=fnffo1ivhvt0ouo6ebqn86a0d4'
+}
+c = {'data': '4265a9c353cd8624fd2bc7b5d75d2f18b1b5e66ccd37e2dfa628bcb8f73db2f14ba98bc6a1d8d0d1c7ff1ef0823b11264d0addaba2bd6a30bdefe06f4ba994ed'}
+d = b'65151f8d966bf596'
+e = b'88ca0f0ea1ecf975'
+
+
+def f(g, d, e):
+    h = pyaes.AESModeOfOperationCBC(d, iv=e)
+    i = b''.join(h.decrypt(g[j:j+16]) for j in range(0, len(g), 16))
+    return i[:-i[-1]]
+
+
+j = requests.post(a, headers=b, data=c)
+
+
+if j.status_code == 200:
+    k = j.text.strip()
+    l = binascii.unhexlify(k)
+    m = f(l, d, e)
+    n = json.loads(m)
+    message_list = []
+    for o in n['data']:
+        p = f'aes-256-cfb:{o['password']}@{o['ip']}:{o['port']}'
+        q = base64.b64encode(p.encode('utf-8')).decode('utf-8')
+        r = f'ss://{q}#{o['title']}'
+        message_list.append(r)
+    # 飞书机器人的 Webhook 地址，需替换为实际地址
+    webhook_url = 'you Webhook 地址'
+    # 将列表中的消息组合成一个字符串
+    message = '\n'.join(message_list)
+    send_feishu_message(webhook_url, message)
+```
+## 宝塔遇到的坑；
+### 打算利用宝塔面板的定时执行，跑这个脚本推送到小飞书群组，结果 和之前了解的不一样了，折腾了几天时间 才无意间解决；下面贴出图片配置。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://edc8.github.io/post/bt-mian-ban-de-python-xiang-mu-de-xiao-keng.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/64282354?v=4">
+<title>bt面板的python项目的小坑</title>
+<link href="//unpkg.com/@wooorm/starry-night@2.1.1/style/both.css" rel="stylesheet" />
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">bt面板的python项目的小坑</h1>
+<div class="title-right">
+    <a href="https://edc8.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/edc8/edc8.github.io/issues/4" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>这几天瞎逛youtube,发个爬取SSR链接的脚本</h2>
+<h3>于是在AI加持下，配合飞书的webhook将自定义服务的消息推送至飞书便有有如下的代码；</h3>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">import</span> <span class="pl-s1">requests</span>
+<span class="pl-k">import</span> <span class="pl-s1">base64</span>
+<span class="pl-k">import</span> <span class="pl-s1">json</span>
+<span class="pl-k">import</span> <span class="pl-s1">pyaes</span>
+<span class="pl-k">import</span> <span class="pl-s1">binascii</span>
+<span class="pl-k">from</span> <span class="pl-s1">datetime</span> <span class="pl-k">import</span> <span class="pl-s1">datetime</span>
+
+
+<span class="pl-k">def</span> <span class="pl-en">send_feishu_message</span>(<span class="pl-s1">webhook_url</span>, <span class="pl-s1">message</span>):
+    <span class="pl-s1">headers</span> <span class="pl-c1">=</span> {
+        <span class="pl-s">"Content-Type"</span>: <span class="pl-s">"application/json"</span>
+    }
+    <span class="pl-s1">payload</span> <span class="pl-c1">=</span> {
+        <span class="pl-s">"msg_type"</span>: <span class="pl-s">"text"</span>,
+        <span class="pl-s">"content"</span>: {
+            <span class="pl-s">"text"</span>: <span class="pl-s1">message</span>
+        }
+    }
+    <span class="pl-s1">response</span> <span class="pl-c1">=</span> <span class="pl-s1">requests</span>.<span class="pl-c1">post</span>(<span class="pl-s1">webhook_url</span>, <span class="pl-s1">json</span><span class="pl-c1">=</span><span class="pl-s1">payload</span>, <span class="pl-s1">headers</span><span class="pl-c1">=</span><span class="pl-s1">headers</span>)
+    <span class="pl-k">if</span> <span class="pl-s1">response</span>.<span class="pl-c1">status_code</span> <span class="pl-c1">==</span> <span class="pl-c1">200</span>:
+        <span class="pl-en">print</span>(<span class="pl-s">"消息发送成功"</span>)
+    <span class="pl-k">else</span>:
+        <span class="pl-en">print</span>(<span class="pl-s">f"消息发送失败，状态码: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">response</span>.<span class="pl-c1">status_code</span><span class="pl-kos">}</span></span>，错误信息: <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">response</span>.<span class="pl-c1">text</span><span class="pl-kos">}</span></span>"</span>)
+
+
+<span class="pl-en">print</span>(<span class="pl-s">"      H͜͡E͜͡L͜͡L͜͡O͜͡ ͜͡W͜͡O͜͡R͜͡L͜͡D͜͡ ͜͡E͜͡X͜͡T͜͡R͜͡A͜͡C͜͡ ͜͡S͜͡S͜͡ ͜͡N͜͡O͜͡D͜͡E͜͡"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">"𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">"Author : 𝐼𝑢"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">f"Date   : <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">datetime</span>.<span class="pl-c1">today</span>().<span class="pl-c1">strftime</span>(<span class="pl-s">'%Y-%m-%d'</span>)<span class="pl-kos">}</span></span>"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">"Version: 1.0"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">"𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟 𓆝 𓆟 𓆞 𓆟"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">"𝐼𝑢:"</span>)
+<span class="pl-en">print</span>(<span class="pl-s">r"""</span>
+<span class="pl-s">⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⠤⠀⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡴⠁⠀⡰⠀⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⠀⠀⠀⠀⠀⢀⡎⢀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⣀⠀⠀⠀⠀⠀⠀⡠⠬⡡⠬⡋⠀⡄⠀⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⡀⠁⠢⡀⠀⠀⢰⠠⢷⠰⠆⡅⠀⡇⠀⠀⠀⣀⠔⠂⡂</span>
+<span class="pl-s">⠱⡀⠀⠈⠒⢄⡸⡑⠊⢒⣂⣦⠄⢃⢀⠔⠈⠀⠀⡰⠁</span>
+<span class="pl-s">⠀⠱⡀⠀⠀⡰⣁⣼⡿⡿⢿⠃⠠⠚⠁⠀⠀⢀⠜⠀⠀</span>
+<span class="pl-s">⠀⠀⠐⢄⠜⠀⠈⠓⠒⠈⠁⠀⠀⠀⠀⠀⡰⠃⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⢀⠊⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠾⡀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⢸⣄⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡇⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠸⢸⣳⠦⣍⣁⣀⣀⣀⣀⣠⠴⠚⠁⠇⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⢳⣿⠄⠸⠢⠍⠉⠉⠀⠀⡠⢒⠎⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⠣⣀⠁⠒⡤⠤⢤⠀⠀⠐⠙⡇⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⠀⠣⡀⡼⠀⠀⠈⠱⡒⠂⡸⠁⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⢒⠁⠀⠀⠀⠀⠀⠀⠀</span>
+<span class="pl-s">"""</span>)
+
+
+<span class="pl-s1">a</span> <span class="pl-c1">=</span> <span class="pl-s">'http://api.skrapp.net/api/serverlist'</span>
+<span class="pl-s1">b</span> <span class="pl-c1">=</span> {
+    <span class="pl-s">'accept'</span>: <span class="pl-s">'/'</span>,
+    <span class="pl-s">'accept-language'</span>: <span class="pl-s">'zh-Hans-CN;q=1, en-CN;q=0.9'</span>,
+    <span class="pl-s">'appversion'</span>: <span class="pl-s">'1.3.1'</span>,
+    <span class="pl-s">'user-agent'</span>: <span class="pl-s">'SkrKK/1.3.1 (iPhone; iOS 13.5; Scale/2.00)'</span>,
+    <span class="pl-s">'content-type'</span>: <span class="pl-s">'application/x-www-form-urlencoded'</span>,
+    <span class="pl-s">'Cookie'</span>: <span class="pl-s">'PHPSESSID=fnffo1ivhvt0ouo6ebqn86a0d4'</span>
+}
+<span class="pl-s1">c</span> <span class="pl-c1">=</span> {<span class="pl-s">'data'</span>: <span class="pl-s">'4265a9c353cd8624fd2bc7b5d75d2f18b1b5e66ccd37e2dfa628bcb8f73db2f14ba98bc6a1d8d0d1c7ff1ef0823b11264d0addaba2bd6a30bdefe06f4ba994ed'</span>}
+<span class="pl-s1">d</span> <span class="pl-c1">=</span> <span class="pl-s">b'65151f8d966bf596'</span>
+<span class="pl-s1">e</span> <span class="pl-c1">=</span> <span class="pl-s">b'88ca0f0ea1ecf975'</span>
+
+
+<span class="pl-k">def</span> <span class="pl-en">f</span>(<span class="pl-s1">g</span>, <span class="pl-s1">d</span>, <span class="pl-s1">e</span>):
+    <span class="pl-s1">h</span> <span class="pl-c1">=</span> <span class="pl-s1">pyaes</span>.<span class="pl-c1">AESModeOfOperationCBC</span>(<span class="pl-s1">d</span>, <span class="pl-s1">iv</span><span class="pl-c1">=</span><span class="pl-s1">e</span>)
+    <span class="pl-s1">i</span> <span class="pl-c1">=</span> <span class="pl-s">b''</span>.<span class="pl-c1">join</span>(<span class="pl-s1">h</span>.<span class="pl-c1">decrypt</span>(<span class="pl-s1">g</span>[<span class="pl-s1">j</span>:<span class="pl-s1">j</span><span class="pl-c1">+</span><span class="pl-c1">16</span>]) <span class="pl-k">for</span> <span class="pl-s1">j</span> <span class="pl-c1">in</span> <span class="pl-en">range</span>(<span class="pl-c1">0</span>, <span class="pl-en">len</span>(<span class="pl-s1">g</span>), <span class="pl-c1">16</span>))
+    <span class="pl-k">return</span> <span class="pl-s1">i</span>[:<span class="pl-c1">-</span><span class="pl-s1">i</span>[<span class="pl-c1">-</span><span class="pl-c1">1</span>]]
+
+
+<span class="pl-s1">j</span> <span class="pl-c1">=</span> <span class="pl-s1">requests</span>.<span class="pl-c1">post</span>(<span class="pl-s1">a</span>, <span class="pl-s1">headers</span><span class="pl-c1">=</span><span class="pl-s1">b</span>, <span class="pl-s1">data</span><span class="pl-c1">=</span><span class="pl-s1">c</span>)
+
+
+<span class="pl-k">if</span> <span class="pl-s1">j</span>.<span class="pl-c1">status_code</span> <span class="pl-c1">==</span> <span class="pl-c1">200</span>:
+    <span class="pl-s1">k</span> <span class="pl-c1">=</span> <span class="pl-s1">j</span>.<span class="pl-c1">text</span>.<span class="pl-c1">strip</span>()
+    <span class="pl-s1">l</span> <span class="pl-c1">=</span> <span class="pl-s1">binascii</span>.<span class="pl-c1">unhexlify</span>(<span class="pl-s1">k</span>)
+    <span class="pl-s1">m</span> <span class="pl-c1">=</span> <span class="pl-en">f</span>(<span class="pl-s1">l</span>, <span class="pl-s1">d</span>, <span class="pl-s1">e</span>)
+    <span class="pl-s1">n</span> <span class="pl-c1">=</span> <span class="pl-s1">json</span>.<span class="pl-c1">loads</span>(<span class="pl-s1">m</span>)
+    <span class="pl-s1">message_list</span> <span class="pl-c1">=</span> []
+    <span class="pl-k">for</span> <span class="pl-s1">o</span> <span class="pl-c1">in</span> <span class="pl-s1">n</span>[<span class="pl-s">'data'</span>]:
+        <span class="pl-s1">p</span> <span class="pl-c1">=</span> <span class="pl-s">f"aes-256-cfb:<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">o</span>[<span class="pl-s">'password'</span>]<span class="pl-kos">}</span></span>@<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">o</span>[<span class="pl-s">'ip'</span>]<span class="pl-kos">}</span></span>:<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">o</span>[<span class="pl-s">'port'</span>]<span class="pl-kos">}</span></span>"</span>
+        <span class="pl-s1">q</span> <span class="pl-c1">=</span> <span class="pl-s1">base64</span>.<span class="pl-c1">b64encode</span>(<span class="pl-s1">p</span>.<span class="pl-c1">encode</span>(<span class="pl-s">'utf-8'</span>)).<span class="pl-c1">decode</span>(<span class="pl-s">'utf-8'</span>)
+        <span class="pl-s1">r</span> <span class="pl-c1">=</span> <span class="pl-s">f"ss://<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">q</span><span class="pl-kos">}</span></span>#<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">o</span>[<span class="pl-s">'title'</span>]<span class="pl-kos">}</span></span>"</span>
+        <span class="pl-s1">message_list</span>.<span class="pl-c1">append</span>(<span class="pl-s1">r</span>)
+    <span class="pl-c"># 飞书机器人的 Webhook 地址，需替换为实际地址</span>
+    <span class="pl-s1">webhook_url</span> <span class="pl-c1">=</span> <span class="pl-s">"you Webhook 地址"</span>
+    <span class="pl-c"># 将列表中的消息组合成一个字符串</span>
+    <span class="pl-s1">message</span> <span class="pl-c1">=</span> <span class="pl-s">"<span class="pl-cce">\n</span>"</span>.<span class="pl-c1">join</span>(<span class="pl-s1">message_list</span>)
+    <span class="pl-en">send_feishu_message</span>(<span class="pl-s1">webhook_url</span>, <span class="pl-s1">message</span>)</pre></div>
+<h2>宝塔遇到的坑；</h2>
+<h3>打算利用宝塔面板的定时执行，跑这个脚本推送到小飞书群组，结果 和之前了解的不一样了，折腾了几天时间 才无意间解决；下面贴出图片配置。</h3>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/930e3c5b2dcb5d25390ce447803cb2aa8f6e2171ad52a809f68a28f6c1e739b0/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d3631324631304239423445324630413737463444414635304339324442314146443131374145413132374135444531463041363635384433303441334444363241453230394646353344324437463737423145414236414432443844393841323531364335433644424543454541354633373243393734304245414438393033464638394446453837463039464330313438454545424345454431454539393039324542313333323037323930423532303544344241414632363341373534384430413133434232333530314644423433384337424534323938414335344445"><img src="https://camo.githubusercontent.com/930e3c5b2dcb5d25390ce447803cb2aa8f6e2171ad52a809f68a28f6c1e739b0/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d3631324631304239423445324630413737463444414635304339324442314146443131374145413132374135444531463041363635384433303441334444363241453230394646353344324437463737423145414236414432443844393841323531364335433644424543454541354633373243393734304245414438393033464638394446453837463039464330313438454545424345454431454539393039324542313333323037323930423532303544344241414632363341373534384430413133434232333530314644423433384337424534323938414335344445" alt="" data-canonical-src="https://preview.cloud.189.cn/image/imageAction?param=612F10B9B4E2F0A77F4DAF50C92DB1AFD117AEA127A5DE1F0A6658D304A3DD62AE209FF53D2D7F77B1EAB6AD2D8D98A2516C5C6DBECEEA5F372C9740BEAD8903FF89DFE87F09FC0148EEEBCEED1EE99092EB133207290B5205D4BAAF263A7548D0A13CB23501FDB438C7BE4298AC54DE" style="max-width: 100%;"></a></p>
+<h2>这个没什么好说的；基本设置下面这个才是重点,需要将这设置打开</h2>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/753074a01cb2edeb607d1421db7ff433f776200819e20a2389d0393c75863276/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d4630413337463231353838413237444536434442464230323830444639443043324236363138313446453034314441423730343244433645333336444330304645364244333033363432364346464632344532433538354131334530323738384343414630343432463342464231373435353439454346433743384533313339354337443134383343383738413943333836434134373634343837463734323146414542413331364337453739393036453435333744363631354144314134383133423938374444344237393241393833314439423333353239444139424342"><img src="https://camo.githubusercontent.com/753074a01cb2edeb607d1421db7ff433f776200819e20a2389d0393c75863276/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d4630413337463231353838413237444536434442464230323830444639443043324236363138313446453034314441423730343244433645333336444330304645364244333033363432364346464632344532433538354131334530323738384343414630343432463342464231373435353439454346433743384533313339354337443134383343383738413943333836434134373634343837463734323146414542413331364337453739393036453435333744363631354144314134383133423938374444344237393241393833314439423333353239444139424342" alt="" data-canonical-src="https://preview.cloud.189.cn/image/imageAction?param=F0A37F21588A27DE6CDBFB0280DF9D0C2B661814FE041DAB7042DC6E336DC00FE6BD3036426CFFF24E2C585A13E02788CCAF0442F3BFB1745549ECFC7C8E31395C7D1483C878A9C386CA4764487F7421FAEBA316C7E79906E4537D6615AD1A4813B987DD4B792A9831D9B33529DA9BCB" style="max-width: 100%;"></a></p>
+<h2>然后才能实现定时运行该python脚本</h2>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/af280c90d7c73fcaa00bac776dd7600092b1d20e53fb90f52524fbeb1b5d2925/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d3832463237393836434243304538393936313344364545353335364435393634313339363637384430453237314631333433303734333731334531414141433432323533463937353536354442433236463441413532434630374538464141303332363544383845343844354244394133323345383930354335324531353139333144304341463736353835384546434643394643313143463630323235414145363542364134333336303645413245303532363238463934324539393937434133394543384337383639443043413034333935343745413346343332343737"><img src="https://camo.githubusercontent.com/af280c90d7c73fcaa00bac776dd7600092b1d20e53fb90f52524fbeb1b5d2925/68747470733a2f2f707265766965772e636c6f75642e3138392e636e2f696d6167652f696d616765416374696f6e3f706172616d3d3832463237393836434243304538393936313344364545353335364435393634313339363637384430453237314631333433303734333731334531414141433432323533463937353536354442433236463441413532434630374538464141303332363544383845343844354244394133323345383930354335324531353139333144304341463736353835384546434643394643313143463630323235414145363542364134333336303645413245303532363238463934324539393937434133394543384337383639443043413034333935343745413346343332343737" alt="" data-canonical-src="https://preview.cloud.189.cn/image/imageAction?param=82F27986CBC0E899613D6EE5356D59641396678D0E271F13430743713E1AAAC42253F975565DBC26F4AA52CF07E8FAA03265D88E48D5BD9A323E8905C52E151931D0CAF765858EFCFC9FC11CF60225AAE65B6A433606EA2E052628F942E9997CA39EC8C7869D0CA0439547EA3F432477" style="max-width: 100%;"></a></p>
+<h3>题外话 现在让人搬个站 换个系统居然要80快，不过现在没这个精力去折腾网站了；再说吧，等闲下来 把网站后台全部找回备份好说不定就搞！</h3></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://edc8.github.io">Hex Blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if("01/19/2025"!=""){
+    var startSite=new Date("01/19/2025");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","edc8/edc8.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
