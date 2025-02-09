@@ -1,5 +1,20 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Hex Blog</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>Hex Blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Wed, 22 Jan 2025 09:41:31 +0000</lastBuildDate><managingEditor>Hex Blog</managingEditor><ttl>60</ttl><webMaster>Hex Blog</webMaster><item><title>bt面板的python项目的小坑</title><link>https://edc8.github.io/post/bt-mian-ban-de-python-xiang-mu-de-xiao-keng.html</link><description>## 这几天瞎逛youtube,发个爬取SSR链接的脚本 
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Hex Blog</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>Hex Blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Sun, 09 Feb 2025 03:01:58 +0000</lastBuildDate><managingEditor>Hex Blog</managingEditor><ttl>60</ttl><webMaster>Hex Blog</webMaster><item><title>节点池代理</title><link>https://edc8.github.io/post/jie-dian-chi-dai-li.html</link><description>## 记录备份 网上找的开源节点池网址
+```
+https://proxypool.link/
+```
+```
+https://github.com/ermaozi/get_subscribe/blob/main/subscribe/v2ray.txt
+```
+```
+https://raw.githubusercontent.com/du5/free/master/sub.list
+
+```
+```
+
+https://github.com/zu1k/proxypool/blob/master/config/source.yaml
+
+```。</description><guid isPermaLink="true">https://edc8.github.io/post/jie-dian-chi-dai-li.html</guid><pubDate>Sun, 09 Feb 2025 03:01:38 +0000</pubDate></item><item><title>bt面板的python项目的小坑</title><link>https://edc8.github.io/post/bt-mian-ban-de-python-xiang-mu-de-xiao-keng.html</link><description>## 这几天瞎逛youtube,发个爬取SSR链接的脚本 
 ### 于是在AI加持下，配合飞书的webhook将自定义服务的消息推送至飞书便有有如下的代码；
 ```python
 import requests
