@@ -1,5 +1,18 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Hex Blog</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>Hex Blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Sun, 09 Feb 2025 03:01:58 +0000</lastBuildDate><managingEditor>Hex Blog</managingEditor><ttl>60</ttl><webMaster>Hex Blog</webMaster><item><title>节点池代理</title><link>https://edc8.github.io/post/jie-dian-chi-dai-li.html</link><description>## 记录备份 网上找的开源节点池网址
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Hex Blog</title><link>https://edc8.github.io</link><description>是生活玩弄了你，还是你享受了生活！</description><copyright>Hex Blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/64282354?v=4</url><title>avatar</title><link>https://edc8.github.io</link></image><lastBuildDate>Mon, 10 Feb 2025 06:21:38 +0000</lastBuildDate><managingEditor>Hex Blog</managingEditor><ttl>60</ttl><webMaster>Hex Blog</webMaster><item><title>BPB面板3.0</title><link>https://edc8.github.io/post/BPB-mian-ban-3.0.html</link><description>## IP类 
+ PROXYIP获取地址1：[ PROXYIP1](https://www.nslookup.io/domains/cdn.xn--b6gac.eu.org/dns-records/)
+
+ PROXYIP获取地址2：[ PROXYIP2](https://www.nslookup.io/domains/cdn-all.xn--b6gac.eu.org/dns-records/)
+ 
+本地优选IP软件下载【[点击直达](https://github.com/bia-pain-bache/Cloudflare-Clean-IP-Scanner/releases/tag/v2.2.5)】
+
+## 后台相关
+/panel （直接进入面板设置密码）
+
+/login    (无法正常进入，需要到KV空间设置密码)
+```
+https://orange-disk-93ca.845253457.workers.dev/login
+```。</description><guid isPermaLink="true">https://edc8.github.io/post/BPB-mian-ban-3.0.html</guid><pubDate>Mon, 10 Feb 2025 06:21:05 +0000</pubDate></item><item><title>节点池代理</title><link>https://edc8.github.io/post/jie-dian-chi-dai-li.html</link><description>## 记录备份 网上找的开源节点池网址
 ```
 https://proxypool.link/
 ```
