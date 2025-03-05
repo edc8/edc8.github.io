@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/64282354?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 带入群验证功能的NoneBot2插件
+```python
+import random
+from datetime import datetime, timedelta
+from nonebot import on_request, on_message, on_notice
+from nonebot.adapters.onebot.v11 import Bot, GroupRequestEvent, GroupMessageEvent, GroupDecreaseNoticeEvent
+from nonebot.typing import T_State
+from nonebot.permission import SUPERUSER
+
+# 存储验证码信息，键为用户 ID，值为 (验证码, 过期时间, 群 ID)
+verification_codes = {}
+# 存储被拉黑的用户 ID
+blacklisted_users = set()
+
+# 自动同意加群请求
+group_request = on_request()
+
+
+@group_request.handle()
+async def handle_group_request(bot: Bot, event: GroupRequestEvent):
+    user_id = event.user_id
+    if user_id in blacklisted_users:
+        await bot.set_group_add_request(
+            flag=event.flag,
+            sub_type=event.sub_type,
+            approve=False,
+            reason='你已被拉黑，无法加入本群'
+        )
+        return
+
+    if event.request_type == 'group' and event.sub_type == 'add':
+        await bot.set_group_add_request(
+            flag=event.flag,
+            sub_type=event.sub_type,
+            approve=True
+        )
+        # 生成 6 位数字验证码
+        code = str(random.randint(100000, 999999))
+        # 设置过期时间为 3 分钟（180 秒）后
+        expiration_time = datetime.now() + timedelta(seconds=180)
+        verification_codes[user_id] = (code, expiration_time, event.group_id)
+        # 发送带 @ 的验证码消息
+        at_user = f'[CQ:at,qq={user_id}]'
+        await bot.send_group_msg(
+            group_id=event.group_id,
+            message=f'{at_user} 欢迎加入本群，请在 3 分钟内回复验证码：{code}'
+        )
+
+
+# 验证用户输入的验证码
+group_message = on_message()
+
+
+@group_message.handle()
+async def handle_group_message_verification(bot: Bot, event: GroupMessageEvent, state: T_State):
+    user_id = event.user_id
+    message = event.get_plaintext()
+
+    if user_id in verification_codes:
+        code, expiration_time, group_id = verification_codes[user_id]
+        if datetime.now() > expiration_time:
+            # 验证码过期，踢出用户
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码超时，已踢出群聊'
+            )
+        elif message == code:
+            # 验证码验证成功
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码验证成功，欢迎你成为本群的一员！禁止讨论一切金额卡相关的话题！'
+            )
+        else:
+            # 验证码验证失败，踢出用户
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码验证失败，已踢出群聊'
+            )
+
+
+# 定期检查未验证的用户，处理未输入验证码的情况
+async def check_unverified_users(bot: Bot):
+    now = datetime.now()
+    for user_id, (code, expiration_time, group_id) in list(verification_codes.items()):
+        if now > expiration_time:
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 未在规定时间内输入验证码，已踢出群聊'
+            )
+
+
+# 处理群成员退群事件
+group_decrease = on_notice()
+
+
+@group_decrease.handle()
+async def handle_group_decrease(bot: Bot, event: GroupDecreaseNoticeEvent):
+    if event.sub_type == 'leave':
+        user_id = event.user_id
+        blacklisted_users.add(user_id)
+        at_user = f'[CQ:at,qq={user_id}]'
+        await bot.send_group_msg(
+            group_id=event.group_id,
+            message=f'{at_user} 已退群，已将其拉黑，禁止再次加入本群'
+        )
+
+
+# 群管理功能（踢人、禁言、解禁）
+group_msg = on_message()
+
+
+@group_msg.handle()
+async def handle_group_management(bot: Bot, event: GroupMessageEvent):
+    # 获取消息文本
+    message_text = str(event.get_plaintext())
+    # 获取消息中的 at 列表
+    at_list = [seg.data.get('qq') for seg in event.get_message() if seg.type == 'at']
+
+    # 踢人功能
+    if '踢' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_kick(group_id=group_id, user_id=int(qq))
+                        await group_msg.send(f'已将 {qq} 踢出群聊')
+                    except Exception as e:
+                        await group_msg.send(f'踢人失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限踢人')
+
+    # 禁言功能
+    elif '禁' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            duration = 60
+            try:
+                for word in message_text.split():
+                    if word.isdigit():
+                        duration = int(word)
+                        break
+            except ValueError:
+                pass
+
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_ban(group_id=group_id, user_id=int(qq), duration=duration)
+                        await group_msg.send(f'已将 {qq} 禁言 {duration} 秒')
+                    except Exception as e:
+                        await group_msg.send(f'禁言失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限禁言')
+
+    # 解禁功能
+    elif '解' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_ban(group_id=group_id, user_id=int(qq), duration=0)
+                        await group_msg.send(f'已将 {qq} 解禁')
+                    except Exception as e:
+                        await group_msg.send(f'解禁失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限解禁')
+```
+## 指令格式
+@ 踢
+@ 禁 空格 300 为5分钟 不输入300 则默认为1分钟
+@ 解。">
+<meta property="og:title" content="NoneBot2QQ群验证插件">
+<meta property="og:description" content="## 带入群验证功能的NoneBot2插件
+```python
+import random
+from datetime import datetime, timedelta
+from nonebot import on_request, on_message, on_notice
+from nonebot.adapters.onebot.v11 import Bot, GroupRequestEvent, GroupMessageEvent, GroupDecreaseNoticeEvent
+from nonebot.typing import T_State
+from nonebot.permission import SUPERUSER
+
+# 存储验证码信息，键为用户 ID，值为 (验证码, 过期时间, 群 ID)
+verification_codes = {}
+# 存储被拉黑的用户 ID
+blacklisted_users = set()
+
+# 自动同意加群请求
+group_request = on_request()
+
+
+@group_request.handle()
+async def handle_group_request(bot: Bot, event: GroupRequestEvent):
+    user_id = event.user_id
+    if user_id in blacklisted_users:
+        await bot.set_group_add_request(
+            flag=event.flag,
+            sub_type=event.sub_type,
+            approve=False,
+            reason='你已被拉黑，无法加入本群'
+        )
+        return
+
+    if event.request_type == 'group' and event.sub_type == 'add':
+        await bot.set_group_add_request(
+            flag=event.flag,
+            sub_type=event.sub_type,
+            approve=True
+        )
+        # 生成 6 位数字验证码
+        code = str(random.randint(100000, 999999))
+        # 设置过期时间为 3 分钟（180 秒）后
+        expiration_time = datetime.now() + timedelta(seconds=180)
+        verification_codes[user_id] = (code, expiration_time, event.group_id)
+        # 发送带 @ 的验证码消息
+        at_user = f'[CQ:at,qq={user_id}]'
+        await bot.send_group_msg(
+            group_id=event.group_id,
+            message=f'{at_user} 欢迎加入本群，请在 3 分钟内回复验证码：{code}'
+        )
+
+
+# 验证用户输入的验证码
+group_message = on_message()
+
+
+@group_message.handle()
+async def handle_group_message_verification(bot: Bot, event: GroupMessageEvent, state: T_State):
+    user_id = event.user_id
+    message = event.get_plaintext()
+
+    if user_id in verification_codes:
+        code, expiration_time, group_id = verification_codes[user_id]
+        if datetime.now() > expiration_time:
+            # 验证码过期，踢出用户
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码超时，已踢出群聊'
+            )
+        elif message == code:
+            # 验证码验证成功
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码验证成功，欢迎你成为本群的一员！禁止讨论一切金额卡相关的话题！'
+            )
+        else:
+            # 验证码验证失败，踢出用户
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 验证码验证失败，已踢出群聊'
+            )
+
+
+# 定期检查未验证的用户，处理未输入验证码的情况
+async def check_unverified_users(bot: Bot):
+    now = datetime.now()
+    for user_id, (code, expiration_time, group_id) in list(verification_codes.items()):
+        if now > expiration_time:
+            del verification_codes[user_id]
+            at_user = f'[CQ:at,qq={user_id}]'
+            await bot.set_group_kick(
+                group_id=group_id,
+                user_id=user_id,
+                reject_add_request=False
+            )
+            await bot.send_group_msg(
+                group_id=group_id,
+                message=f'{at_user} 未在规定时间内输入验证码，已踢出群聊'
+            )
+
+
+# 处理群成员退群事件
+group_decrease = on_notice()
+
+
+@group_decrease.handle()
+async def handle_group_decrease(bot: Bot, event: GroupDecreaseNoticeEvent):
+    if event.sub_type == 'leave':
+        user_id = event.user_id
+        blacklisted_users.add(user_id)
+        at_user = f'[CQ:at,qq={user_id}]'
+        await bot.send_group_msg(
+            group_id=event.group_id,
+            message=f'{at_user} 已退群，已将其拉黑，禁止再次加入本群'
+        )
+
+
+# 群管理功能（踢人、禁言、解禁）
+group_msg = on_message()
+
+
+@group_msg.handle()
+async def handle_group_management(bot: Bot, event: GroupMessageEvent):
+    # 获取消息文本
+    message_text = str(event.get_plaintext())
+    # 获取消息中的 at 列表
+    at_list = [seg.data.get('qq') for seg in event.get_message() if seg.type == 'at']
+
+    # 踢人功能
+    if '踢' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_kick(group_id=group_id, user_id=int(qq))
+                        await group_msg.send(f'已将 {qq} 踢出群聊')
+                    except Exception as e:
+                        await group_msg.send(f'踢人失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限踢人')
+
+    # 禁言功能
+    elif '禁' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            duration = 60
+            try:
+                for word in message_text.split():
+                    if word.isdigit():
+                        duration = int(word)
+                        break
+            except ValueError:
+                pass
+
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_ban(group_id=group_id, user_id=int(qq), duration=duration)
+                        await group_msg.send(f'已将 {qq} 禁言 {duration} 秒')
+                    except Exception as e:
+                        await group_msg.send(f'禁言失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限禁言')
+
+    # 解禁功能
+    elif '解' in message_text and at_list:
+        if event.sender.role in ['admin', 'owner'] or await SUPERUSER(bot, event):
+            group_id = event.group_id
+            for qq in at_list:
+                if qq != 'all':
+                    try:
+                        await bot.set_group_ban(group_id=group_id, user_id=int(qq), duration=0)
+                        await group_msg.send(f'已将 {qq} 解禁')
+                    except Exception as e:
+                        await group_msg.send(f'解禁失败：{str(e)}')
+        else:
+            await group_msg.send('你没有权限解禁')
+```
+## 指令格式
+@ 踢
+@ 禁 空格 300 为5分钟 不输入300 则默认为1分钟
+@ 解。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://edc8.github.io/post/NoneBot2QQ-qun-yan-zheng-cha-jian.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/64282354?v=4">
+<title>NoneBot2QQ群验证插件</title>
+<link href="//unpkg.com/@wooorm/starry-night@2.1.1/style/both.css" rel="stylesheet" />
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">NoneBot2QQ群验证插件</h1>
+<div class="title-right">
+    <a href="https://edc8.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/edc8/edc8.github.io/issues/8" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>带入群验证功能的NoneBot2插件</h2>
+<div class="highlight highlight-source-python"><pre class="notranslate"><span class="pl-k">import</span> <span class="pl-s1">random</span>
+<span class="pl-k">from</span> <span class="pl-s1">datetime</span> <span class="pl-k">import</span> <span class="pl-s1">datetime</span>, <span class="pl-s1">timedelta</span>
+<span class="pl-k">from</span> <span class="pl-s1">nonebot</span> <span class="pl-k">import</span> <span class="pl-s1">on_request</span>, <span class="pl-s1">on_message</span>, <span class="pl-s1">on_notice</span>
+<span class="pl-k">from</span> <span class="pl-s1">nonebot</span>.<span class="pl-s1">adapters</span>.<span class="pl-s1">onebot</span>.<span class="pl-s1">v11</span> <span class="pl-k">import</span> <span class="pl-v">Bot</span>, <span class="pl-v">GroupRequestEvent</span>, <span class="pl-v">GroupMessageEvent</span>, <span class="pl-v">GroupDecreaseNoticeEvent</span>
+<span class="pl-k">from</span> <span class="pl-s1">nonebot</span>.<span class="pl-s1">typing</span> <span class="pl-k">import</span> <span class="pl-v">T_State</span>
+<span class="pl-k">from</span> <span class="pl-s1">nonebot</span>.<span class="pl-s1">permission</span> <span class="pl-k">import</span> <span class="pl-c1">SUPERUSER</span>
+
+<span class="pl-c"># 存储验证码信息，键为用户 ID，值为 (验证码, 过期时间, 群 ID)</span>
+<span class="pl-s1">verification_codes</span> <span class="pl-c1">=</span> {}
+<span class="pl-c"># 存储被拉黑的用户 ID</span>
+<span class="pl-s1">blacklisted_users</span> <span class="pl-c1">=</span> <span class="pl-en">set</span>()
+
+<span class="pl-c"># 自动同意加群请求</span>
+<span class="pl-s1">group_request</span> <span class="pl-c1">=</span> <span class="pl-en">on_request</span>()
+
+
+<span class="pl-en">@<span class="pl-s1">group_request</span>.<span class="pl-c1">handle</span>()</span>
+<span class="pl-k">async</span> <span class="pl-k">def</span> <span class="pl-en">handle_group_request</span>(<span class="pl-s1">bot</span>: <span class="pl-smi">Bot</span>, <span class="pl-s1">event</span>: <span class="pl-smi">GroupRequestEvent</span>):
+    <span class="pl-s1">user_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">user_id</span>
+    <span class="pl-k">if</span> <span class="pl-s1">user_id</span> <span class="pl-c1">in</span> <span class="pl-s1">blacklisted_users</span>:
+        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_add_request</span>(
+            <span class="pl-s1">flag</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">flag</span>,
+            <span class="pl-s1">sub_type</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">sub_type</span>,
+            <span class="pl-s1">approve</span><span class="pl-c1">=</span><span class="pl-c1">False</span>,
+            <span class="pl-s1">reason</span><span class="pl-c1">=</span><span class="pl-s">"你已被拉黑，无法加入本群"</span>
+        )
+        <span class="pl-k">return</span>
+
+    <span class="pl-k">if</span> <span class="pl-s1">event</span>.<span class="pl-c1">request_type</span> <span class="pl-c1">==</span> <span class="pl-s">'group'</span> <span class="pl-c1">and</span> <span class="pl-s1">event</span>.<span class="pl-c1">sub_type</span> <span class="pl-c1">==</span> <span class="pl-s">'add'</span>:
+        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_add_request</span>(
+            <span class="pl-s1">flag</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">flag</span>,
+            <span class="pl-s1">sub_type</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">sub_type</span>,
+            <span class="pl-s1">approve</span><span class="pl-c1">=</span><span class="pl-c1">True</span>
+        )
+        <span class="pl-c"># 生成 6 位数字验证码</span>
+        <span class="pl-s1">code</span> <span class="pl-c1">=</span> <span class="pl-en">str</span>(<span class="pl-s1">random</span>.<span class="pl-c1">randint</span>(<span class="pl-c1">100000</span>, <span class="pl-c1">999999</span>))
+        <span class="pl-c"># 设置过期时间为 3 分钟（180 秒）后</span>
+        <span class="pl-s1">expiration_time</span> <span class="pl-c1">=</span> <span class="pl-s1">datetime</span>.<span class="pl-c1">now</span>() <span class="pl-c1">+</span> <span class="pl-en">timedelta</span>(<span class="pl-s1">seconds</span><span class="pl-c1">=</span><span class="pl-c1">180</span>)
+        <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>] <span class="pl-c1">=</span> (<span class="pl-s1">code</span>, <span class="pl-s1">expiration_time</span>, <span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>)
+        <span class="pl-c"># 发送带 @ 的验证码消息</span>
+        <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+            <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>,
+            <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 欢迎加入本群，请在 3 分钟内回复验证码：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">code</span><span class="pl-kos">}</span></span>"</span>
+        )
+
+
+<span class="pl-c"># 验证用户输入的验证码</span>
+<span class="pl-s1">group_message</span> <span class="pl-c1">=</span> <span class="pl-en">on_message</span>()
+
+
+<span class="pl-en">@<span class="pl-s1">group_message</span>.<span class="pl-c1">handle</span>()</span>
+<span class="pl-k">async</span> <span class="pl-k">def</span> <span class="pl-en">handle_group_message_verification</span>(<span class="pl-s1">bot</span>: <span class="pl-smi">Bot</span>, <span class="pl-s1">event</span>: <span class="pl-smi">GroupMessageEvent</span>, <span class="pl-s1">state</span>: <span class="pl-smi">T_State</span>):
+    <span class="pl-s1">user_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">user_id</span>
+    <span class="pl-s1">message</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">get_plaintext</span>()
+
+    <span class="pl-k">if</span> <span class="pl-s1">user_id</span> <span class="pl-c1">in</span> <span class="pl-s1">verification_codes</span>:
+        <span class="pl-s1">code</span>, <span class="pl-s1">expiration_time</span>, <span class="pl-s1">group_id</span> <span class="pl-c1">=</span> <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>]
+        <span class="pl-k">if</span> <span class="pl-s1">datetime</span>.<span class="pl-c1">now</span>() <span class="pl-c1">&gt;</span> <span class="pl-s1">expiration_time</span>:
+            <span class="pl-c"># 验证码过期，踢出用户</span>
+            <span class="pl-k">del</span> <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>]
+            <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_kick</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-s1">user_id</span>,
+                <span class="pl-s1">reject_add_request</span><span class="pl-c1">=</span><span class="pl-c1">False</span>
+            )
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 验证码超时，已踢出群聊"</span>
+            )
+        <span class="pl-k">elif</span> <span class="pl-s1">message</span> <span class="pl-c1">==</span> <span class="pl-s1">code</span>:
+            <span class="pl-c"># 验证码验证成功</span>
+            <span class="pl-k">del</span> <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>]
+            <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 验证码验证成功，欢迎你成为本群的一员！禁止讨论一切金额卡相关的话题！"</span>
+            )
+        <span class="pl-k">else</span>:
+            <span class="pl-c"># 验证码验证失败，踢出用户</span>
+            <span class="pl-k">del</span> <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>]
+            <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_kick</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-s1">user_id</span>,
+                <span class="pl-s1">reject_add_request</span><span class="pl-c1">=</span><span class="pl-c1">False</span>
+            )
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 验证码验证失败，已踢出群聊"</span>
+            )
+
+
+<span class="pl-c"># 定期检查未验证的用户，处理未输入验证码的情况</span>
+<span class="pl-k">async</span> <span class="pl-k">def</span> <span class="pl-en">check_unverified_users</span>(<span class="pl-s1">bot</span>: <span class="pl-smi">Bot</span>):
+    <span class="pl-s1">now</span> <span class="pl-c1">=</span> <span class="pl-s1">datetime</span>.<span class="pl-c1">now</span>()
+    <span class="pl-k">for</span> <span class="pl-s1">user_id</span>, (<span class="pl-s1">code</span>, <span class="pl-s1">expiration_time</span>, <span class="pl-s1">group_id</span>) <span class="pl-c1">in</span> <span class="pl-en">list</span>(<span class="pl-s1">verification_codes</span>.<span class="pl-c1">items</span>()):
+        <span class="pl-k">if</span> <span class="pl-s1">now</span> <span class="pl-c1">&gt;</span> <span class="pl-s1">expiration_time</span>:
+            <span class="pl-k">del</span> <span class="pl-s1">verification_codes</span>[<span class="pl-s1">user_id</span>]
+            <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_kick</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-s1">user_id</span>,
+                <span class="pl-s1">reject_add_request</span><span class="pl-c1">=</span><span class="pl-c1">False</span>
+            )
+            <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+                <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>,
+                <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 未在规定时间内输入验证码，已踢出群聊"</span>
+            )
+
+
+<span class="pl-c"># 处理群成员退群事件</span>
+<span class="pl-s1">group_decrease</span> <span class="pl-c1">=</span> <span class="pl-en">on_notice</span>()
+
+
+<span class="pl-en">@<span class="pl-s1">group_decrease</span>.<span class="pl-c1">handle</span>()</span>
+<span class="pl-k">async</span> <span class="pl-k">def</span> <span class="pl-en">handle_group_decrease</span>(<span class="pl-s1">bot</span>: <span class="pl-smi">Bot</span>, <span class="pl-s1">event</span>: <span class="pl-smi">GroupDecreaseNoticeEvent</span>):
+    <span class="pl-k">if</span> <span class="pl-s1">event</span>.<span class="pl-c1">sub_type</span> <span class="pl-c1">==</span> <span class="pl-s">'leave'</span>:
+        <span class="pl-s1">user_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">user_id</span>
+        <span class="pl-s1">blacklisted_users</span>.<span class="pl-c1">add</span>(<span class="pl-s1">user_id</span>)
+        <span class="pl-s1">at_user</span> <span class="pl-c1">=</span> <span class="pl-s">f"[CQ:at,qq=<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">user_id</span><span class="pl-kos">}</span></span>]"</span>
+        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">send_group_msg</span>(
+            <span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>,
+            <span class="pl-s1">message</span><span class="pl-c1">=</span><span class="pl-s">f"<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">at_user</span><span class="pl-kos">}</span></span> 已退群，已将其拉黑，禁止再次加入本群"</span>
+        )
+
+
+<span class="pl-c"># 群管理功能（踢人、禁言、解禁）</span>
+<span class="pl-s1">group_msg</span> <span class="pl-c1">=</span> <span class="pl-en">on_message</span>()
+
+
+<span class="pl-en">@<span class="pl-s1">group_msg</span>.<span class="pl-c1">handle</span>()</span>
+<span class="pl-k">async</span> <span class="pl-k">def</span> <span class="pl-en">handle_group_management</span>(<span class="pl-s1">bot</span>: <span class="pl-smi">Bot</span>, <span class="pl-s1">event</span>: <span class="pl-smi">GroupMessageEvent</span>):
+    <span class="pl-c"># 获取消息文本</span>
+    <span class="pl-s1">message_text</span> <span class="pl-c1">=</span> <span class="pl-en">str</span>(<span class="pl-s1">event</span>.<span class="pl-c1">get_plaintext</span>())
+    <span class="pl-c"># 获取消息中的 at 列表</span>
+    <span class="pl-s1">at_list</span> <span class="pl-c1">=</span> [<span class="pl-s1">seg</span>.<span class="pl-c1">data</span>.<span class="pl-c1">get</span>(<span class="pl-s">'qq'</span>) <span class="pl-k">for</span> <span class="pl-s1">seg</span> <span class="pl-c1">in</span> <span class="pl-s1">event</span>.<span class="pl-c1">get_message</span>() <span class="pl-k">if</span> <span class="pl-s1">seg</span>.<span class="pl-c1">type</span> <span class="pl-c1">==</span> <span class="pl-s">'at'</span>]
+
+    <span class="pl-c"># 踢人功能</span>
+    <span class="pl-k">if</span> <span class="pl-s">"踢"</span> <span class="pl-c1">in</span> <span class="pl-s1">message_text</span> <span class="pl-c1">and</span> <span class="pl-s1">at_list</span>:
+        <span class="pl-k">if</span> <span class="pl-s1">event</span>.<span class="pl-c1">sender</span>.<span class="pl-c1">role</span> <span class="pl-c1">in</span> [<span class="pl-s">'admin'</span>, <span class="pl-s">'owner'</span>] <span class="pl-c1">or</span> <span class="pl-k">await</span> <span class="pl-en">SUPERUSER</span>(<span class="pl-s1">bot</span>, <span class="pl-s1">event</span>):
+            <span class="pl-s1">group_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>
+            <span class="pl-k">for</span> <span class="pl-s1">qq</span> <span class="pl-c1">in</span> <span class="pl-s1">at_list</span>:
+                <span class="pl-k">if</span> <span class="pl-s1">qq</span> <span class="pl-c1">!=</span> <span class="pl-s">'all'</span>:
+                    <span class="pl-k">try</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_kick</span>(<span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>, <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-en">int</span>(<span class="pl-s1">qq</span>))
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"已将 <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">qq</span><span class="pl-kos">}</span></span> 踢出群聊"</span>)
+                    <span class="pl-k">except</span> <span class="pl-v">Exception</span> <span class="pl-k">as</span> <span class="pl-s1">e</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"踢人失败：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-en">str</span>(<span class="pl-s1">e</span>)<span class="pl-kos">}</span></span>"</span>)
+        <span class="pl-k">else</span>:
+            <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">"你没有权限踢人"</span>)
+
+    <span class="pl-c"># 禁言功能</span>
+    <span class="pl-k">elif</span> <span class="pl-s">"禁"</span> <span class="pl-c1">in</span> <span class="pl-s1">message_text</span> <span class="pl-c1">and</span> <span class="pl-s1">at_list</span>:
+        <span class="pl-k">if</span> <span class="pl-s1">event</span>.<span class="pl-c1">sender</span>.<span class="pl-c1">role</span> <span class="pl-c1">in</span> [<span class="pl-s">'admin'</span>, <span class="pl-s">'owner'</span>] <span class="pl-c1">or</span> <span class="pl-k">await</span> <span class="pl-en">SUPERUSER</span>(<span class="pl-s1">bot</span>, <span class="pl-s1">event</span>):
+            <span class="pl-s1">group_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>
+            <span class="pl-s1">duration</span> <span class="pl-c1">=</span> <span class="pl-c1">60</span>
+            <span class="pl-k">try</span>:
+                <span class="pl-k">for</span> <span class="pl-s1">word</span> <span class="pl-c1">in</span> <span class="pl-s1">message_text</span>.<span class="pl-c1">split</span>():
+                    <span class="pl-k">if</span> <span class="pl-s1">word</span>.<span class="pl-c1">isdigit</span>():
+                        <span class="pl-s1">duration</span> <span class="pl-c1">=</span> <span class="pl-en">int</span>(<span class="pl-s1">word</span>)
+                        <span class="pl-k">break</span>
+            <span class="pl-k">except</span> <span class="pl-v">ValueError</span>:
+                <span class="pl-k">pass</span>
+
+            <span class="pl-k">for</span> <span class="pl-s1">qq</span> <span class="pl-c1">in</span> <span class="pl-s1">at_list</span>:
+                <span class="pl-k">if</span> <span class="pl-s1">qq</span> <span class="pl-c1">!=</span> <span class="pl-s">'all'</span>:
+                    <span class="pl-k">try</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_ban</span>(<span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>, <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-en">int</span>(<span class="pl-s1">qq</span>), <span class="pl-s1">duration</span><span class="pl-c1">=</span><span class="pl-s1">duration</span>)
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"已将 <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">qq</span><span class="pl-kos">}</span></span> 禁言 <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">duration</span><span class="pl-kos">}</span></span> 秒"</span>)
+                    <span class="pl-k">except</span> <span class="pl-v">Exception</span> <span class="pl-k">as</span> <span class="pl-s1">e</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"禁言失败：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-en">str</span>(<span class="pl-s1">e</span>)<span class="pl-kos">}</span></span>"</span>)
+        <span class="pl-k">else</span>:
+            <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">"你没有权限禁言"</span>)
+
+    <span class="pl-c"># 解禁功能</span>
+    <span class="pl-k">elif</span> <span class="pl-s">"解"</span> <span class="pl-c1">in</span> <span class="pl-s1">message_text</span> <span class="pl-c1">and</span> <span class="pl-s1">at_list</span>:
+        <span class="pl-k">if</span> <span class="pl-s1">event</span>.<span class="pl-c1">sender</span>.<span class="pl-c1">role</span> <span class="pl-c1">in</span> [<span class="pl-s">'admin'</span>, <span class="pl-s">'owner'</span>] <span class="pl-c1">or</span> <span class="pl-k">await</span> <span class="pl-en">SUPERUSER</span>(<span class="pl-s1">bot</span>, <span class="pl-s1">event</span>):
+            <span class="pl-s1">group_id</span> <span class="pl-c1">=</span> <span class="pl-s1">event</span>.<span class="pl-c1">group_id</span>
+            <span class="pl-k">for</span> <span class="pl-s1">qq</span> <span class="pl-c1">in</span> <span class="pl-s1">at_list</span>:
+                <span class="pl-k">if</span> <span class="pl-s1">qq</span> <span class="pl-c1">!=</span> <span class="pl-s">'all'</span>:
+                    <span class="pl-k">try</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">bot</span>.<span class="pl-c1">set_group_ban</span>(<span class="pl-s1">group_id</span><span class="pl-c1">=</span><span class="pl-s1">group_id</span>, <span class="pl-s1">user_id</span><span class="pl-c1">=</span><span class="pl-en">int</span>(<span class="pl-s1">qq</span>), <span class="pl-s1">duration</span><span class="pl-c1">=</span><span class="pl-c1">0</span>)
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"已将 <span class="pl-s1"><span class="pl-kos">{</span><span class="pl-s1">qq</span><span class="pl-kos">}</span></span> 解禁"</span>)
+                    <span class="pl-k">except</span> <span class="pl-v">Exception</span> <span class="pl-k">as</span> <span class="pl-s1">e</span>:
+                        <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">f"解禁失败：<span class="pl-s1"><span class="pl-kos">{</span><span class="pl-en">str</span>(<span class="pl-s1">e</span>)<span class="pl-kos">}</span></span>"</span>)
+        <span class="pl-k">else</span>:
+            <span class="pl-k">await</span> <span class="pl-s1">group_msg</span>.<span class="pl-c1">send</span>(<span class="pl-s">"你没有权限解禁"</span>)</pre></div>
+<h2>指令格式</h2>
+<p>@ 踢<br>
+@ 禁 空格 300 为5分钟 不输入300 则默认为1分钟<br>
+@ 解</p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://edc8.github.io">Hex Blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if("01/19/2025"!=""){
+    var startSite=new Date("01/19/2025");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","edc8/edc8.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
