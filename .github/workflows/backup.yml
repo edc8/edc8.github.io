@@ -1,0 +1,27 @@
+name: Article Backup
+on:
+  issues:
+    types: [opened, edited] # 当你新建或修改文章时触发
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Save Issue to File
+        run: |
+          # 创建备份文件夹
+          mkdir -p backup
+          # 将 Issue 内容写入文件，文件名使用 Issue 标题（过滤特殊字符）
+          FILENAME="backup/${{ github.event.issue.title }}.md"
+          echo "${{ github.event.issue.body }}" > "$FILENAME"
+          
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add backup/
+          git commit -m "Backup article: ${{ github.event.issue.title }}" || exit 0
+          git push
