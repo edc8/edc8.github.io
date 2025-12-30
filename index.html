@@ -19,42 +19,45 @@
         .blog-title { font-size: 24px; font-weight: 600; color: #1f2328; text-decoration: none; }
         .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
         
-        /* 列表项布局 */
-        .post-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid #d0d7de; transition: 0.2s; }
-        .post-item:hover { background-color: #f6f8fa; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
-        .post-content-left { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-        .post-link { font-size: 18px; font-weight: 600; color: #0969da; text-decoration: none; cursor: pointer; }
+        /* 列表项布局优化 */
+        .post-item { 
+            padding: 16px 0; 
+            border-bottom: 1px solid #d0d7de; 
+            transition: 0.2; 
+        }
+        .post-item:hover { background-color: #f6f8fa; padding: 16px 8px; border-radius: 6px; }
+        
+        .post-link { font-size: 18px; font-weight: 600; color: #0969da; text-decoration: none; cursor: pointer; display: block; margin-bottom: 8px; }
         .post-link:hover { text-decoration: underline; }
+        
+        /* 标签和日期的容器：标签在左，日期在右 */
+        .post-meta-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
         .labels { display: flex; flex-wrap: wrap; gap: 6px; }
         .label-tag { font-size: 12px; font-weight: 500; padding: 0 10px; line-height: 20px; border-radius: 2em; border: 1px solid transparent; }
-        .post-date { color: #636c76; font-size: 14px; font-family: monospace; margin-left: 20px; white-space: nowrap; padding-top: 4px; }
+        
+        .post-date { 
+            color: #636c76; 
+            font-size: 14px; 
+            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+            white-space: nowrap; 
+        }
 
-        /* 文章详情与代码块优化 */
+        /* 文章详情 */
         #post-content-view { display: none; }
         .markdown-body { font-size: 16px; line-height: 1.6; margin-top: 24px; }
-        
-        /* 限制代码块高度 */
-        .markdown-body pre {
-            max-height: 500px;
-            overflow: auto;
-            background-color: #f6f8fa;
-            border-radius: 8px;
-            border: 1px solid #d0d7de;
-        }
-        .markdown-body pre code {
-            padding: 16px;
-            display: block;
-            font-size: 14px;
-            line-height: 1.5;
-        }
+        .markdown-body pre { max-height: 500px; overflow: auto; background-color: #f6f8fa; border-radius: 8px; border: 1px solid #d0d7de; }
+        .markdown-body pre code { padding: 16px; display: block; font-size: 14px; }
 
         .post-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
         .back-btn { font-size: 14px; color: #636c76; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-bottom: 24px; }
         .back-btn:hover { color: #0969da; }
 
-        /* 页脚 */
         footer { margin-top: 64px; padding: 48px 0; color: #636c76; font-size: 13px; text-align: center; border-top: 1px solid #d0d7de; }
-        .footer-info { opacity: 0.8; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -87,7 +90,7 @@
     </div>
 
     <footer>
-        <div class="footer-info">© <span id="year"></span> Hex Blog</div>
+        <div style="margin-bottom: 8px;">© <span id="year"></span> Hex Blog</div>
         <div>已在星际中运行了 <span id="days"></span> 天</div>
     </footer>
 </div>
@@ -134,11 +137,11 @@
             const item = document.createElement('div');
             item.className = 'post-item';
             item.innerHTML = `
-                <div class="post-content-left">
-                    <a class="post-link" onclick="showPost(${index})">${issue.title}</a>
+                <a class="post-link" onclick="showPost(${index})">${issue.title}</a>
+                <div class="post-meta-row">
                     <div class="labels">${labelsHtml}</div>
+                    <div class="post-date">${issue.displayDate}</div>
                 </div>
-                <div class="post-date">${issue.displayDate}</div>
             `;
             container.appendChild(item);
         });
@@ -153,12 +156,7 @@
         
         let cleanBody = issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim();
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
-        
-        // 渲染 Markdown 后执行语法高亮
-        document.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-        
+        document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
         window.scrollTo(0, 0);
     }
 
