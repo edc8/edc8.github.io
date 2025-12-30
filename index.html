@@ -12,43 +12,44 @@
         body { background-color: #ffffff; color: #1f2328; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
         .container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
         
-        /* 头部样式 */
         .header { display: flex; align-items: center; padding: 32px 0; border-bottom: 1px solid #d0d7de; margin-bottom: 40px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .avatar { width: 48px; height: 48px; border-radius: 50%; }
         .blog-title { font-size: 24px; font-weight: 600; color: #1f2328; text-decoration: none; }
         .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
         
-        /* 核心修改：标签在日期前面，且整体靠右 */
+        /* 核心布局修改 */
         .post-item { 
             display: flex; 
             align-items: center; 
             padding: 16px 0; 
             border-bottom: 1px solid #d0d7de; 
             transition: 0.2s; 
+            overflow: hidden; /* 防止溢出 */
         }
         .post-item:hover { background-color: #f6f8fa; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
         
+        /* 标题区域：占据剩余空间并处理长标题 */
         .post-link { 
             font-size: 18px; 
             font-weight: 600; 
             color: #0969da; 
             text-decoration: none; 
             cursor: pointer;
-            flex-shrink: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-right: 20px;
+            flex: 1;             /* 占据剩余所有空间 */
+            min-width: 0;        /* 关键：允许 flex 子元素收缩，否则 ellipsis 不生效 */
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            margin-right: 16px;  /* 与右侧保持距离 */
         }
         
-        /* 右侧容器：包含标签和日期 */
+        /* 右侧容器：保持固定或根据内容收缩，不被标题挤压 */
         .post-right-side {
             display: flex;
             align-items: center;
-            margin-left: auto; /* 关键：将整个容器推向右边 */
-            gap: 16px; /* 标签和日期之间的间距 */
-            flex-shrink: 0;
+            flex-shrink: 0;      /* 禁止右侧内容被标题压缩 */
+            gap: 16px; 
         }
 
         .labels { display: flex; gap: 6px; }
@@ -61,7 +62,13 @@
             white-space: nowrap; 
         }
 
-        /* 内容详情 */
+        /* 移动端适配：标题太长时允许折行或微调 */
+        @media (max-width: 600px) {
+            .post-item { flex-direction: column; align-items: flex-start; }
+            .post-right-side { margin-left: 0; margin-top: 8px; width: 100%; justify-content: space-between; }
+            .post-link { white-space: normal; max-width: 100%; margin-right: 0; }
+        }
+
         #post-content-view { display: none; }
         .markdown-body { font-size: 16px; line-height: 1.6; margin-top: 24px; }
         .markdown-body pre { max-height: 500px; overflow: auto; background-color: #f6f8fa; border-radius: 8px; border: 1px solid #d0d7de; }
@@ -149,7 +156,7 @@
             const item = document.createElement('div');
             item.className = 'post-item';
             item.innerHTML = `
-                <a class="post-link" onclick="showPost(${index})">${issue.title}</a>
+                <a class="post-link" onclick="showPost(${index})" title="${issue.title}">${issue.title}</a>
                 <div class="post-right-side">
                     <div class="labels">${labelsHtml}</div>
                     <div class="post-date">${issue.displayDate}</div>
