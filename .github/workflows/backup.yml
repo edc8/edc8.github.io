@@ -1,51 +1,98 @@
-name: Full Articles Backup
+name: Update Blog Stats and Backup Articles
+
 on:
   issues:
     types: [opened, edited, deleted, closed, reopened]
-  workflow_dispatch: # 这一行开启了手动触发功能
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'backup/**'
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 0点自动更新一次
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  backup:
+  update-and-backup:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整历史以确保 push 顺畅
 
+      # --- 步骤 1: 备份文章 ---
       - name: Fetch All Issues and Backup
         run: |
           mkdir -p backup
-          # 获取所有 Issue 数据
-          # state=all 包含已关闭的 issue，如果你只想备份开启的，可以改写为 state=open
+          # 获取所有非 PR 的 Issue 并生成 MD 文件
           curl -s "https://api.github.com/repos/${{ github.repository }}/issues?state=all&per_page=100" | jq -c '.[]' | while read -r issue; do
-            # 排除 Pull Requests
             if echo "$issue" | jq -e '.pull_request' > /dev/null; then
                 continue
             fi
-            
-            # 提取标题，并处理文件名非法字符（如 / \ : * ? " < > |）
             TITLE=$(echo "$issue" | jq -r '.title' | sed 's/[/\\:?*"<>|]/-/g')
             BODY=$(echo "$issue" | jq -r '.body')
-            
-            # 写入文件（如果 body 为空则跳过）
             if [ "$BODY" != "null" ]; then
               echo "$BODY" > "backup/${TITLE}.md"
-              echo "已备份文章: ${TITLE}.md"
             fi
           done
 
+      # --- 步骤 2: 更新 README 统计 (JavaScript) ---
+      - name: Update README Content
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              creator: owner,
+              state: 'open'
+            });
+            
+            const posts = issues.filter(i => !i.pull_request);
+            const count = posts.length;
+            const lastUpdate = count > 0 ? posts[0].created_at.split('T')[0] : 'N/A';
+            
+            const content = `
+            <div align="center">
+              <img src="https://avatars.githubusercontent.com/u/64282354?v=4" width="100" style="border-radius:50%">
+              <h1>Hex Blog</h1>
+              <p><b>是生活玩弄了你，还是你享受了生活！</b></p>
+              <p>📝 文章篇数：<b>${count}</b> &nbsp;&nbsp; 📅 最近更新：<b>${lastUpdate}</b></p>
+            </div>
+            
+            ---
+            `;
+            
+            const readme = fs.readFileSync('README.md', 'utf8');
+            // 替换策略：这里假设你希望 content 放在文件开头
+            // 如果你有特定的标记位，可以调整这里的正则
+            const newReadme = readme.replace(/[\s\S]*?(?=---|$)/, `\n${content}\n`);
+            fs.writeFileSync('README.md', newReadme);
+
+      # --- 步骤 3: 统一提交并推送 ---
       - name: Commit and Push
         run: |
           git config --global core.quotepath false
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add backup/
-          # 检查是否有内容变更，避免空 commit 报错
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git add README.md backup/
+          
+          # 检查是否有任何变动（包括 README 和备份文件）
           if git diff --staged --quiet; then
-            echo "没有新文章或内容更新，跳过推送。"
+            echo "没有检测到任何内容变化，跳过推送。"
           else
-            git commit -m "Automated full backup: $(date +'%Y-%m-%d %H:%M:%S')"
-            git push
+            git commit -m "chore: automated backup and readme update [skip ci]"
+            # 即使合并了，加上 rebase 也是双重保险
+            git pull --rebase origin main
+            git push origin main
           fi
