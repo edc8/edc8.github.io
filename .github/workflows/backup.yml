@@ -1,7 +1,11 @@
-name: Article Backup
+name: Full Articles Backup
 on:
   issues:
-    types: [opened, edited] # 当你新建或修改文章时触发
+    types: [opened, edited, deleted, closed, reopened]
+  workflow_dispatch: # 这一行开启了手动触发功能
+
+permissions:
+  contents: write
 
 jobs:
   backup:
@@ -10,18 +14,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Save Issue to File
+      - name: Fetch All Issues and Backup
         run: |
-          # 创建备份文件夹
           mkdir -p backup
-          # 将 Issue 内容写入文件，文件名使用 Issue 标题（过滤特殊字符）
-          FILENAME="backup/${{ github.event.issue.title }}.md"
-          echo "${{ github.event.issue.body }}" > "$FILENAME"
-          
+          # 获取所有 Issue 数据
+          # state=all 包含已关闭的 issue，如果你只想备份开启的，可以改写为 state=open
+          curl -s "https://api.github.com/repos/${{ github.repository }}/issues?state=all&per_page=100" | jq -c '.[]' | while read -r issue; do
+            # 排除 Pull Requests
+            if echo "$issue" | jq -e '.pull_request' > /dev/null; then
+                continue
+            fi
+            
+            # 提取标题，并处理文件名非法字符（如 / \ : * ? " < > |）
+            TITLE=$(echo "$issue" | jq -r '.title' | sed 's/[/\\:?*"<>|]/-/g')
+            BODY=$(echo "$issue" | jq -r '.body')
+            
+            # 写入文件（如果 body 为空则跳过）
+            if [ "$BODY" != "null" ]; then
+              echo "$BODY" > "backup/${TITLE}.md"
+              echo "已备份文章: ${TITLE}.md"
+            fi
+          done
+
       - name: Commit and Push
         run: |
+          git config --global core.quotepath false
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add backup/
-          git commit -m "Backup article: ${{ github.event.issue.title }}" || exit 0
-          git push
+          # 检查是否有内容变更，避免空 commit 报错
+          if git diff --staged --quiet; then
+            echo "没有新文章或内容更新，跳过推送。"
+          else
+            git commit -m "Automated full backup: $(date +'%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
