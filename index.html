@@ -19,43 +19,55 @@
         .blog-title { font-size: 24px; font-weight: 600; color: #1f2328; text-decoration: none; }
         .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
         
-        /* 列表项布局优化 */
+        /* 核心修改：标签在日期前面，且整体靠右 */
         .post-item { 
+            display: flex; 
+            align-items: center; 
             padding: 16px 0; 
             border-bottom: 1px solid #d0d7de; 
-            transition: 0.2; 
+            transition: 0.2s; 
         }
-        .post-item:hover { background-color: #f6f8fa; padding: 16px 8px; border-radius: 6px; }
+        .post-item:hover { background-color: #f6f8fa; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
         
-        .post-link { font-size: 18px; font-weight: 600; color: #0969da; text-decoration: none; cursor: pointer; display: block; margin-bottom: 8px; }
-        .post-link:hover { text-decoration: underline; }
+        .post-link { 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #0969da; 
+            text-decoration: none; 
+            cursor: pointer;
+            flex-shrink: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 20px;
+        }
         
-        /* 标签和日期的容器：标签在左，日期在右 */
-        .post-meta-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
+        /* 右侧容器：包含标签和日期 */
+        .post-right-side {
+            display: flex;
+            align-items: center;
+            margin-left: auto; /* 关键：将整个容器推向右边 */
+            gap: 16px; /* 标签和日期之间的间距 */
+            flex-shrink: 0;
         }
 
-        .labels { display: flex; flex-wrap: wrap; gap: 6px; }
-        .label-tag { font-size: 12px; font-weight: 500; padding: 0 10px; line-height: 20px; border-radius: 2em; border: 1px solid transparent; }
+        .labels { display: flex; gap: 6px; }
+        .label-tag { font-size: 12px; font-weight: 500; padding: 0 10px; line-height: 20px; border-radius: 2em; border: 1px solid transparent; white-space: nowrap; }
         
         .post-date { 
             color: #636c76; 
             font-size: 14px; 
-            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace;
             white-space: nowrap; 
         }
 
-        /* 文章详情 */
+        /* 内容详情 */
         #post-content-view { display: none; }
         .markdown-body { font-size: 16px; line-height: 1.6; margin-top: 24px; }
         .markdown-body pre { max-height: 500px; overflow: auto; background-color: #f6f8fa; border-radius: 8px; border: 1px solid #d0d7de; }
         .markdown-body pre code { padding: 16px; display: block; font-size: 14px; }
-
         .post-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
         .back-btn { font-size: 14px; color: #636c76; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-bottom: 24px; }
-        .back-btn:hover { color: #0969da; }
 
         footer { margin-top: 64px; padding: 48px 0; color: #636c76; font-size: 13px; text-align: center; border-top: 1px solid #d0d7de; }
     </style>
@@ -84,7 +96,7 @@
         </div>
         <div class="post-header">
             <h1 id="detail-title" style="font-size: 32px; margin-bottom: 8px; color: #1f2328;"></h1>
-            <div id="detail-meta" class="post-date"></div>
+            <div id="detail-meta" class="post-date" style="margin-left:0"></div>
         </div>
         <article id="post-detail" class="markdown-body"></article>
     </div>
@@ -138,7 +150,7 @@
             item.className = 'post-item';
             item.innerHTML = `
                 <a class="post-link" onclick="showPost(${index})">${issue.title}</a>
-                <div class="post-meta-row">
+                <div class="post-right-side">
                     <div class="labels">${labelsHtml}</div>
                     <div class="post-date">${issue.displayDate}</div>
                 </div>
@@ -153,7 +165,6 @@
         document.getElementById('post-content-view').style.display = 'block';
         document.getElementById('detail-title').innerText = issue.title;
         document.getElementById('detail-meta').innerText = `发布于 ${issue.displayDate}`;
-        
         let cleanBody = issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim();
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
