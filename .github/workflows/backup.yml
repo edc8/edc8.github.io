@@ -9,9 +9,10 @@ on:
     paths-ignore:
       - 'README.md'
       - 'backup/**'
+      - '.keep-alive'
   schedule:
-    - cron: '0 0 * * *' # 每天 UTC 0点自动更新一次
-  workflow_dispatch:
+    - cron: '0 0 * * *' # 每天 UTC 0点自动运行
+  workflow_dispatch: # 允许手动触发
 
 permissions:
   contents: write
@@ -23,13 +24,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取完整历史以确保 push 顺畅
+          fetch-depth: 0 
 
       # --- 步骤 1: 备份文章 ---
       - name: Fetch All Issues and Backup
         run: |
           mkdir -p backup
-          # 获取所有非 PR 的 Issue 并生成 MD 文件
           curl -s "https://api.github.com/repos/${{ github.repository }}/issues?state=all&per_page=100" | jq -c '.[]' | while read -r issue; do
             if echo "$issue" | jq -e '.pull_request' > /dev/null; then
                 continue
@@ -73,12 +73,11 @@ jobs:
             `;
             
             const readme = fs.readFileSync('README.md', 'utf8');
-            // 替换策略：这里假设你希望 content 放在文件开头
-            // 如果你有特定的标记位，可以调整这里的正则
+            // 替换 README 开头到第一个 --- 之间的内容
             const newReadme = readme.replace(/[\s\S]*?(?=---|$)/, `\n${content}\n`);
             fs.writeFileSync('README.md', newReadme);
 
-      # --- 步骤 3: 统一提交并推送 ---
+      # --- 步骤 3: 统一提交、推送并处理保活 ---
       - name: Commit and Push
         run: |
           git config --global core.quotepath false
@@ -87,12 +86,21 @@ jobs:
           
           git add README.md backup/
           
-          # 检查是否有任何变动（包括 README 和备份文件）
+          # 检查是否有内容变化
           if git diff --staged --quiet; then
-            echo "没有检测到任何内容变化，跳过推送。"
+            # 如果是定时任务触发且没有内容变化，执行保活提交
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "触发保活机制：更新 .keep-alive 文件"
+              date > .keep-alive
+              git add .keep-alive
+              git commit -m "chore: keep-alive (prevent action suspension) [skip ci]"
+              git push origin main
+            else
+              echo "无内容更新，跳过推送。"
+            fi
           else
+            # 有内容更新，正常提交
             git commit -m "chore: automated backup and readme update [skip ci]"
-            # 即使合并了，加上 rebase 也是双重保险
             git pull --rebase origin main
             git push origin main
           fi
