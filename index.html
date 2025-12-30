@@ -5,38 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hex Blog</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/Primer/21.0.7/primer.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
         body { background-color: #ffffff; color: #1f2328; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
         
-        /* 仿 Gmeek 导航栏 */
-        .header { display: flex; align-items: center; padding: 32px 0; border-bottom: 1px solid #d0d7de; margin-bottom: 40px; justify-content: space-between; }
+        /* 头部样式 */
+        .header { display: flex; align-items: center; padding: 32px 0; border-bottom: 1px solid #d0d7de; margin-bottom: 40px; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .avatar { width: 48px; height: 48px; border-radius: 50%; }
         .blog-title { font-size: 24px; font-weight: 600; color: #1f2328; text-decoration: none; }
+        .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
         
-        .container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
-        
-        /* 仿 Gmeek 列表项 */
-        .post-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #d0d7de; transition: 0.2s; }
+        /* 列表项布局 */
+        .post-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid #d0d7de; transition: 0.2s; }
         .post-item:hover { background-color: #f6f8fa; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+        .post-content-left { display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .post-link { font-size: 18px; font-weight: 600; color: #0969da; text-decoration: none; cursor: pointer; }
         .post-link:hover { text-decoration: underline; }
-        
-        .post-date { color: #636c76; font-size: 14px; font-family: monospace; }
-        .labels { display: flex; gap: 4px; margin-top: 4px; }
-        .label-tag { font-size: 12px; font-weight: 500; padding: 0 7px; line-height: 18px; border: 1px solid transparent; border-radius: 2em; }
+        .labels { display: flex; flex-wrap: wrap; gap: 6px; }
+        .label-tag { font-size: 12px; font-weight: 500; padding: 0 10px; line-height: 20px; border-radius: 2em; border: 1px solid transparent; }
+        .post-date { color: #636c76; font-size: 14px; font-family: monospace; margin-left: 20px; white-space: nowrap; padding-top: 4px; }
 
-        /* 文章详情 */
+        /* 文章详情与代码块优化 */
         #post-content-view { display: none; }
         .markdown-body { font-size: 16px; line-height: 1.6; margin-top: 24px; }
+        
+        /* 限制代码块高度 */
+        .markdown-body pre {
+            max-height: 500px;
+            overflow: auto;
+            background-color: #f6f8fa;
+            border-radius: 8px;
+            border: 1px solid #d0d7de;
+        }
+        .markdown-body pre code {
+            padding: 16px;
+            display: block;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
         .post-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
         .back-btn { font-size: 14px; color: #636c76; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-bottom: 24px; }
         .back-btn:hover { color: #0969da; }
 
         /* 页脚 */
-        footer { margin-top: 64px; padding: 32px 0; color: #636c76; font-size: 13px; text-align: center; border-top: 1px solid #d0d7de; }
-        .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
+        footer { margin-top: 64px; padding: 48px 0; color: #636c76; font-size: 13px; text-align: center; border-top: 1px solid #d0d7de; }
+        .footer-info { opacity: 0.8; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -62,16 +80,15 @@
             <span>返回首页</span>
         </div>
         <div class="post-header">
-            <h1 id="detail-title" style="font-size: 32px; margin-bottom: 8px;"></h1>
+            <h1 id="detail-title" style="font-size: 32px; margin-bottom: 8px; color: #1f2328;"></h1>
             <div id="detail-meta" class="post-date"></div>
         </div>
         <article id="post-detail" class="markdown-body"></article>
     </div>
 
     <footer>
-        <p>© <span id="year"></span> Hex Blog</p>
-        <p>已在星际中运行了 <span id="days"></span> 天</p>
-        <p style="margin-top: 12px; font-size: 11px;">Powered by Gmeek (API Mode)</p>
+        <div class="footer-info">© <span id="year"></span> Hex Blog</div>
+        <div>已在星际中运行了 <span id="days"></span> 天</div>
     </footer>
 </div>
 
@@ -82,7 +99,6 @@
         startDate: '2025-01-19'
     };
 
-    // 基础初始化
     document.getElementById('year').innerText = new Date().getFullYear();
     const start = new Date(CONFIG.startDate);
     const now = new Date();
@@ -90,7 +106,6 @@
 
     let allIssues = [];
 
-    // 日期提取
     function getPostDate(issue) {
         const dateMatch = issue.body ? issue.body.match(/(?:日期|Date)[:：]\s*(\d{4}-\d{2}-\d{2})/) : null;
         return dateMatch ? dateMatch[1] : issue.created_at.split('T')[0];
@@ -104,7 +119,7 @@
             allIssues.sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate));
             renderList();
         } catch (e) {
-            document.getElementById('posts-container').innerText = "加载失败，请检查仓库状态。";
+            document.getElementById('posts-container').innerText = "加载中...";
         }
     }
 
@@ -112,16 +127,16 @@
         const container = document.getElementById('posts-container');
         container.innerHTML = '';
         allIssues.forEach((issue, index) => {
-            const labels = issue.labels.map(l => 
+            const labelsHtml = issue.labels.map(l => 
                 `<span class="label-tag" style="background-color: #${l.color}22; color: #${l.color}; border: 1px solid #${l.color}66;">${l.name}</span>`
             ).join('');
             
             const item = document.createElement('div');
             item.className = 'post-item';
             item.innerHTML = `
-                <div>
+                <div class="post-content-left">
                     <a class="post-link" onclick="showPost(${index})">${issue.title}</a>
-                    <div class="labels">${labels}</div>
+                    <div class="labels">${labelsHtml}</div>
                 </div>
                 <div class="post-date">${issue.displayDate}</div>
             `;
@@ -138,6 +153,12 @@
         
         let cleanBody = issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim();
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
+        
+        // 渲染 Markdown 后执行语法高亮
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+        
         window.scrollTo(0, 0);
     }
 
