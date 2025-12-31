@@ -9,111 +9,164 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
-        body { background-color: #ffffff; color: #1f2328; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-        .container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
-        .header { display: flex; align-items: center; padding: 32px 0; border-bottom: 1px solid #d0d7de; margin-bottom: 40px; }
-        .header-left { display: flex; align-items: center; gap: 12px; }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; }
-        .blog-title { font-size: 24px; font-weight: 600; color: #1f2328; text-decoration: none; }
-        .sub-title { color: #636c76; font-size: 14px; margin-top: 4px; }
+        :root {
+            --side-right-width: 150px; /* 日期列宽度 */
+        }
+        body { 
+            background-color: #ffffff; 
+            color: #1f2328; 
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"; 
+            padding-bottom: 50px;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
         
-        /* 列表样式 */
-        .post-item { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid #d0d7de; transition: 0.2s; overflow: hidden; gap: 12px; }
-        .post-item:hover { background-color: #f6f8fa; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
-        .post-link { font-size: 16px; font-weight: 600; color: #0969da; text-decoration: none; cursor: pointer; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .post-right-side { display: flex; align-items: center; flex-shrink: 0; gap: 12px; }
-        .labels { display: flex; gap: 6px; }
-        .label-tag { font-size: 12px; font-weight: 500; padding: 0 8px; line-height: 18px; border-radius: 2em; border: 1px solid transparent; white-space: nowrap; }
-        .post-date { color: #636c76; font-size: 13px; font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace; white-space: nowrap; }
+        /* 页眉样式 - 还原 Gmeek 居中布局 */
+        .header { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            padding: 48px 0; 
+            margin-bottom: 20px;
+        }
+        .avatar { 
+            width: 100px; 
+            height: 100px; 
+            border-radius: 50%; 
+            box-shadow: 0 0 0 1px rgba(27,31,36,0.15);
+            margin-bottom: 16px;
+        }
+        .blog-title { 
+            font-size: 32px; 
+            font-weight: 600; 
+            color: #1f2328; 
+            text-decoration: none; 
+        }
+        .sub-title { color: #636c76; font-size: 16px; margin-top: 8px; text-align: center; }
+        
+        /* 文章列表 - 仿 Gmeek 列表效果 */
+        .post-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 16px 8px; 
+            border-bottom: 1px solid #d0d7de; 
+            transition: background-color 0.2s;
+        }
+        .post-item:hover { background-color: #f6f8fa; }
+        
+        .post-link { 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #0969da; 
+            text-decoration: none; 
+            cursor: pointer; 
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .post-link:hover { text-decoration: underline; }
 
-        /* 代码块增强 */
-        .markdown-body pre { 
-            position: relative; 
-            padding: 0; 
-            background-color: #f6f8fa; 
-            border-radius: 6px; 
-            border: 1px solid #d0d7de; 
-            overflow: visible; /* 允许按钮绝对定位 */
+        .post-right-side { 
+            display: flex; 
+            align-items: center; 
+            gap: 16px; 
+            margin-left: 16px;
         }
-        .markdown-body pre code { 
-            padding: 16px; 
-            display: block; 
-            font-size: 13px; 
-            line-height: 1.5; 
-            overflow-x: auto; /* 手机端横向滚动 */
-            white-space: pre;
-            word-break: normal;
+        .labels { display: flex; gap: 4px; }
+        .label-tag { 
+            font-size: 12px; 
+            font-weight: 500; 
+            padding: 0 10px; 
+            line-height: 20px; 
+            border-radius: 2em; 
+            border: 1px solid transparent; 
         }
+        .post-date { 
+            color: #636c76; 
+            font-size: 14px; 
+            width: var(--side-right-width);
+            text-align: right;
+            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace; 
+        }
+
+        /* 详情页 */
+        #post-content-view { display: none; margin-top: 20px; }
+        .post-header { margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid #d8dee4; }
+        .post-title { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+        
+        /* 代码块复制按钮增强 */
+        .markdown-body pre { position: relative; }
         .copy-btn {
             position: absolute;
             top: 8px;
             right: 8px;
             padding: 4px 8px;
             font-size: 12px;
-            color: #636c76;
-            background-color: #ffffff;
+            background-color: #f6f8fa;
             border: 1px solid #d0d7de;
             border-radius: 6px;
             cursor: pointer;
-            opacity: 0; /* 默认隐藏 */
-            transition: opacity 0.2s, background-color 0.2s;
-            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
         }
         .markdown-body pre:hover .copy-btn { opacity: 1; }
-        .copy-btn:hover { background-color: #f3f4f6; color: #0969da; }
-        .copy-btn.success { color: #1a7f37; border-color: #1a7f37; }
+
+        /* 底部 */
+        footer { margin-top: 80px; padding: 40px 0; color: #636c76; font-size: 13px; text-align: center; }
 
         /* 移动端适配 */
-        @media (max-width: 600px) {
-            .labels { display: none; } 
-            .markdown-body pre:hover .copy-btn { opacity: 1; } /* 移动端显示按钮 */
-            .copy-btn { opacity: 0.8; padding: 2px 6px; }
-            .markdown-body pre code { font-size: 12px; padding: 12px; }
+        @media (max-width: 767px) {
+            .header { padding: 32px 0; }
+            .avatar { width: 80px; height: 80px; }
+            .blog-title { font-size: 24px; }
+            
+            .post-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .post-right-side { margin-left: 0; width: 100%; justify-content: space-between; }
+            .post-date { text-align: left; width: auto; }
+            .labels { display: none; } /* 移动端隐藏标签以节省空间 */
+            
+            .post-link { font-size: 16px; width: 100%; }
         }
-
-        #post-content-view { display: none; }
-        .markdown-body { font-size: 16px; line-height: 1.6; margin-top: 24px; }
-        .post-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
-        .back-btn { font-size: 14px; color: #636c76; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-bottom: 24px; }
-        footer { margin-top: 64px; padding: 48px 0; color: #636c76; font-size: 13px; text-align: center; border-top: 1px solid #d0d7de; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header class="header">
-        <div class="header-left">
+        <a href="javascript:location.reload()">
             <img src="https://avatars.githubusercontent.com/u/64282354?v=4" class="avatar" alt="avatar">
-            <div>
-                <a href="javascript:location.reload()" class="blog-title">Hex Blog</a>
-                <div class="sub-title">是生活玩弄了你，还是你享受了生活！</div>
-            </div>
-        </div>
+        </a>
+        <a href="javascript:location.reload()" class="blog-title">Hex Blog</a>
+        <div class="sub-title">是生活玩弄了你，还是你享受了生活！</div>
     </header>
 
     <div id="post-list-view">
-        <div id="posts-container">正在加载日志...</div>
+        <div id="posts-container" class="v-align-middle">正在加载日志...</div>
     </div>
 
     <div id="post-content-view">
-        <div class="back-btn" onclick="showList()">
-            <svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7.5h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"></path></svg>
-            <span>返回首页</span>
+        <div class="back-btn mb-4">
+            <button class="btn btn-sm" onclick="showList()">
+                <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7.5h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"></path></svg>
+                <span>返回首页</span>
+            </button>
         </div>
         <div class="post-header">
-            <h1 id="detail-title" style="font-size: 28px; margin-bottom: 8px; color: #1f2328;"></h1>
-            <div id="detail-meta" class="post-date" style="margin-left:0"></div>
+            <h1 id="detail-title" class="post-title"></h1>
+            <div id="detail-meta" class="post-date" style="text-align: left;"></div>
         </div>
         <article id="post-detail" class="markdown-body"></article>
     </div>
 
     <footer>
-        <div style="margin-bottom: 8px;">© <span id="year"></span> Hex Blog</div>
-        <div>已在星际中运行了 <span id="days"></span> 天</div>
+        <div>© <span id="year"></span> Hex Blog</div>
+        <div class="mt-2">已在星际中运行了 <span id="days" class="text-bold"></span> 天</div>
+        <div class="mt-1">Powered by <a href="https://github.com/Meekdai/Gmeek" target="_blank">Gmeek</a> Style</div>
     </footer>
 </div>
 
 <script>
+    // ... 原有逻辑代码保持不变 ...
     const CONFIG = {
         username: 'edc8',
         repo: 'edc8.github.io',
@@ -166,29 +219,19 @@
     }
 
     function addCopyButtons() {
-        document.querySelectorAll('pre').forEach((pre) => {
-            // 防止重复添加
+        document.querySelectorAll('.markdown-body pre').forEach((pre) => {
             if (pre.querySelector('.copy-btn')) return;
-
             const btn = document.createElement('button');
             btn.className = 'copy-btn';
-            btn.innerText = '复制';
-            
+            btn.innerText = 'Copy';
             btn.addEventListener('click', async () => {
                 const code = pre.querySelector('code').innerText;
                 try {
                     await navigator.clipboard.writeText(code);
-                    btn.innerText = '已复制!';
-                    btn.classList.add('success');
-                    setTimeout(() => {
-                        btn.innerText = '复制';
-                        btn.classList.remove('success');
-                    }, 2000);
-                } catch (err) {
-                    btn.innerText = '失败';
-                }
+                    btn.innerText = 'Copied!';
+                    setTimeout(() => btn.innerText = 'Copy', 2000);
+                } catch (err) { btn.innerText = 'Error'; }
             });
-
             pre.appendChild(btn);
         });
     }
@@ -198,17 +241,15 @@
         document.getElementById('post-list-view').style.display = 'none';
         document.getElementById('post-content-view').style.display = 'block';
         document.getElementById('detail-title').innerText = issue.title;
-        document.getElementById('detail-meta').innerText = `发布于 ${issue.displayDate}`;
+        document.getElementById('detail-meta').innerText = `Published on ${issue.displayDate}`;
         
         let cleanBody = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
         
-        // 高亮并添加复制按钮
         document.querySelectorAll('pre code').forEach((b) => {
             hljs.highlightElement(b);
         });
         addCopyButtons();
-        
         window.scrollTo(0, 0);
     }
 
