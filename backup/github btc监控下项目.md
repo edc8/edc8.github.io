@@ -4,9 +4,9 @@ from datetime import datetime
 import os
 
 # 币印 API 配置
-PUID = " "
+PUID = "10413702"
 COIN_TYPE = "btc"
-TOKEN = " "
+TOKEN = "wowaMdEoleJHdEOrcVtNiJ5JQKPJwKCUB5EMSaLrW0bumD9ulTu8NxzdskKiCsGw"
 
 def fetch():
     url = "https://api-prod.poolin.com/api/public/v2/payment/stats"
