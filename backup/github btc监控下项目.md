@@ -1,4 +1,5 @@
 ###  python部分
+
 ``` import requests
 from datetime import datetime
 import os
@@ -73,44 +74,3 @@ def fetch():
 
 if __name__ == "__main__":
     fetch()```
-
-### yml文件部分
-```name: BTC-Monitor-Stable-Permanent
-
-on:
-  schedule:
-    - cron: '*/20 * * * *'  # 每20分钟运行一次，避开风控
-  workflow_dispatch:        # 允许手动触发，用于激活和测试
-
-permissions:
-  contents: write
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 1. 检出代码
-        uses: actions/checkout@v4
-
-      - name: 2. 设置 Python 环境
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: 3. 安装必要依赖
-        run: pip install requests
-
-      - name: 4. 执行更新脚本
-        run: python update_data.py
-
-      - name: 5. 部署到 GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: .
-          branch: gh-pages
-          single-commit: true
-
-      - name: 6. 自动保活 (防止60天停转)
-        uses: gautamkrishnar/keepalive-workflow@v2
-        with:
-          use_api: true```
