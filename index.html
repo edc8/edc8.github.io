@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-    <link rel="icon" href="https://blog.meekdai.com/favicon.svg">
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/64282354?v=4">
+    
     <script>
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
@@ -17,33 +19,57 @@
     <style>
         body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
-        #footer {margin-top:64px; text-align: center;font-size: small;}
+        #footer {margin-top:64px; text-align: center;font-size: small; color: var(--fgColor-muted);}
+        
         .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
         .avatar:hover{transform: scale(1.15) rotate(360deg);}
+        
         .title-left a{color:inherit;text-decoration:none;vertical-align: bottom;font-size:40px;font-weight: bold;font-family:Monaco;margin-left:8px;}
         .title-right{display:flex;margin:auto 0 0 auto;}
         .title-right .circle{padding: 14px 16px;}
+        
         .SideNav{min-width: 360px;}
         .SideNav-icon{margin-right: 16px}
         .SideNav-item .Label{color: #fff;margin-left:4px;}
         .d-flex{min-width:0;}
-        .listTitle{overflow:hidden;white-space:nowrap;text-overflow: ellipsis;max-width: 100%; font-weight: 600; color: var(--fgColor-default);}
-        .listLabels{white-space:nowrap;display:flex;}
-        .listLabels object{max-height:16px;max-width:24px;}
         
-        /* 详情页特有样式 */
+        .listTitle{overflow:hidden;white-space:nowrap;text-overflow: ellipsis;max-width: 100%; font-weight: 600; color: var(--fgColor-default);}
+        .listLabels{white-space:nowrap;display:flex;align-items: center;}
+        
         #post-content-view { display: none; }
         .postTitle { margin: 24px 0; font-size: 32px; font-weight: bold; }
         .markdown-body { padding: 20px 0; }
-        .copy-btn { position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity 0.2s; }
-        .markdown-body pre:hover .copy-btn { opacity: 1; }
+
+        /* 代码块复制按钮样式优化 */
+        .markdown-body pre { position: relative; padding: 16px; background-color: var(--color-canvas-subtle); border-radius: 6px; }
+        .copy-code-btn { 
+            position: absolute; 
+            top: 8px; 
+            right: 8px; 
+            display: none; /* 默认隐藏，悬停显示 */
+            padding: 4px 8px; 
+            font-size: 12px; 
+            font-weight: 500;
+            line-height: 20px;
+            color: var(--color-fg-default);
+            background-color: var(--color-btn-bg);
+            border: 1px solid var(--color-btn-border);
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .markdown-body pre:hover .copy-code-btn { display: block; }
+        .copy-code-btn:hover { background-color: var(--color-btn-hover-bg); }
 
         @media (max-width: 600px) {
-            body {padding: 8px;}
+            body {padding: 15px;}
             .avatar {width:40px;height:40px;}
-            .blogTitle{display:none;}
-            .LabelTime{display:none;}
+            .blogTitle{display:inline-block !important; font-size: 24px !important;}
+            .LabelTime{display:inline-block !important; font-size: 11px;}
             .SideNav{min-width: 100%;}
+            .listLabels {margin-top: 4px;}
+            .SideNav-item {flex-direction: column; align-items: flex-start !important;}
+            .copy-code-btn { display: block; } /* 移动端始终显示按钮 */
         }
     </style>
 </head>
@@ -62,7 +88,7 @@
     </div>
 
     <div id="post-list-view">
-        <div style="margin-bottom: 16px;">是生活玩弄了你，还是你享受了生活！</div>
+        <div style="margin-bottom: 16px; color: var(--fgColor-muted);">是生活玩弄了你，还是你享受了生活！</div>
         <nav class="SideNav border" id="posts-container">
             <div style="padding:16px;">正在加载日志...</div>
         </nav>
@@ -71,16 +97,14 @@
     <div id="post-content-view">
         <div class="postTitle" id="detail-title"></div>
         <article id="post-detail" class="markdown-body"></article>
-        <div style="margin-top:40px;">
-            <button class="btn btn-primary" onclick="showList()">返回首页</button>
+        <div style="margin-top:40px; border-top: 1px solid var(--borderColor-muted); padding-top: 20px;">
+            <button class="btn btn-outline" onclick="showList()">返回首页</button>
         </div>
     </div>
 
     <div id="footer">
-        <div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="#">Hex Blog</a></div>
-        <div id="footer2">
-            <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
-        </div>
+        <div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="#" style="color:inherit; text-decoration:none;">Hex Blog</a></div>
+        <div id="footer2"><span id="runday"></span></div>
     </div>
 
 <script>
@@ -92,7 +116,6 @@
 
     const IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'post': 'M0 3.75C0 2.784.784 2 1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25ZM3.5 6.25a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm.75 2.25h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1 0-1.5Z'};
 
-    // 主题切换逻辑还原
     let themeSettings={"dark": ["dark","moon","#00f0ff"],"light": ["light","sun","#ff5000"]};
     function modeSwitch(){
         let currentMode=document.documentElement.getAttribute('data-color-mode');
@@ -105,15 +128,13 @@
         document.getElementById("themeSwitch").setAttribute("d",IconList[icon]);
         document.getElementById("themeSwitch").parentNode.style.color=color;
     }
-    // 初始化主题图标
     changeTheme(theme, theme === "light" ? "sun" : "moon", theme === "light" ? "#ff5000" : "#00f0ff");
 
-    // 运行天数逻辑
     const now=new Date();
     document.getElementById("copyrightYear").innerHTML=now.getFullYear();
     const startSite=new Date(CONFIG.startDate);
     const diffDay=Math.floor((now-startSite)/(1000*60*60*24));
-    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+    document.getElementById("runday").innerHTML="网站运行 "+diffDay+" 天";
 
     let allIssues = [];
 
@@ -127,32 +148,18 @@
             });
             allIssues.sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate));
             renderList();
-        } catch (e) {
-            document.getElementById('posts-container').innerText = "加载失败";
-        }
+        } catch (e) { document.getElementById('posts-container').innerText = "加载失败"; }
     }
 
     function renderList() {
         const container = document.getElementById('posts-container');
         container.innerHTML = '';
         allIssues.forEach((issue, index) => {
-            const labelsHtml = issue.labels.map(l => 
-                `<span class="Label LabelName" style="background-color:#${l.color}">${l.name}</span>`
-            ).join('');
-            
+            const labelsHtml = issue.labels.map(l => `<span class="Label LabelName" style="background-color:#${l.color}">${l.name}</span>`).join('');
             const item = document.createElement('a');
             item.className = 'SideNav-item d-flex flex-items-center flex-justify-between';
             item.onclick = () => showPost(index);
-            item.innerHTML = `
-                <div class="d-flex flex-items-center">
-                    <svg class="SideNav-icon octicon" width="16" height="16"><path d="${IconList['post']}"></path></svg>
-                    <span class="listTitle">${issue.title}</span>
-                </div>
-                <div class="listLabels">
-                    ${labelsHtml}
-                    <span class="Label LabelTime" style="background-color:#0969da">${issue.displayDate}</span>
-                </div>
-            `;
+            item.innerHTML = `<div class="d-flex flex-items-center"><svg class="SideNav-icon octicon" width="16" height="16"><path d="${IconList['post']}"></path></svg><span class="listTitle">${issue.title}</span></div><div class="listLabels">${labelsHtml}<span class="Label LabelTime" style="background-color:#0969da; margin-left:8px;">${issue.displayDate}</span></div>`;
             container.appendChild(item);
         });
     }
@@ -162,12 +169,10 @@
         document.getElementById('post-list-view').style.display = 'none';
         document.getElementById('post-content-view').style.display = 'block';
         document.getElementById('detail-title').innerText = issue.title;
-        
         let cleanBody = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
-        
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
-        addCopyButtons();
+        addCopyButtons(); // 核心：渲染完成后添加按钮
         window.scrollTo(0, 0);
     }
 
@@ -177,15 +182,23 @@
         window.scrollTo(0, 0);
     }
 
+    // 增强版复制按钮逻辑
     function addCopyButtons() {
         document.querySelectorAll('.markdown-body pre').forEach((pre) => {
+            if(pre.querySelector('.copy-code-btn')) return;
             const btn = document.createElement('button');
-            btn.className = 'btn btn-sm copy-btn';
+            btn.className = 'copy-code-btn';
             btn.innerText = 'Copy';
+            
             btn.onclick = () => {
-                navigator.clipboard.writeText(pre.innerText).then(() => {
+                const codeText = pre.querySelector('code').innerText;
+                navigator.clipboard.writeText(codeText).then(() => {
                     btn.innerText = 'Copied!';
-                    setTimeout(() => btn.innerText = 'Copy', 2000);
+                    btn.style.backgroundColor = 'var(--color-btn-success-bg)';
+                    setTimeout(() => {
+                        btn.innerText = 'Copy';
+                        btn.style.backgroundColor = 'var(--color-btn-bg)';
+                    }, 2000);
                 });
             };
             pre.appendChild(btn);
