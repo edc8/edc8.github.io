@@ -1,5 +1,5 @@
 ###  python部分
-`import requests
+``` import requests
 from datetime import datetime
 import os
 
@@ -72,9 +72,10 @@ def fetch():
     print("✅ index.html 写入成功")
 
 if __name__ == "__main__":
-    fetch()`
+    fetch()```
+
 ### yml文件部分
-`name: BTC-Monitor-Stable-Permanent
+```name: BTC-Monitor-Stable-Permanent
 
 on:
   schedule:
@@ -112,4 +113,4 @@ jobs:
       - name: 6. 自动保活 (防止60天停转)
         uses: gautamkrishnar/keepalive-workflow@v2
         with:
-          use_api: true`
+          use_api: true```
