@@ -17,7 +17,7 @@
     </script>
     <title>Hex Blog</title>
     <style>
-        body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+        body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height: 1.5;}
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
         #footer {margin-top:64px; text-align: center;font-size: small; color: var(--fgColor-muted);}
         
@@ -28,48 +28,46 @@
         .title-right{display:flex;margin:auto 0 0 auto;}
         .title-right .circle{padding: 14px 16px;}
         
-        .SideNav{min-width: 360px;}
-        .SideNav-icon{margin-right: 16px}
-        .SideNav-item .Label{color: #fff;margin-left:4px;}
-        .d-flex{min-width:0;}
-        
-        .listTitle{overflow:hidden;white-space:nowrap;text-overflow: ellipsis;max-width: 100%; font-weight: 600; color: var(--fgColor-default);}
-        .listLabels{white-space:nowrap;display:flex;align-items: center;}
+        /* 列表布局：手机端也保持单行 */
+        .SideNav-item { flex-direction: row !important; align-items: center !important; padding: 8px 12px; }
+        .post-item-container { display: flex; align-items: center; width: 100%; overflow: hidden; }
+        .listTitle{overflow:hidden; white-space:nowrap; text-overflow: ellipsis; flex: 1; font-weight: 600; color: var(--fgColor-default);}
+        .listLabels{white-space:nowrap; display:flex; align-items: center; margin-left: 8px; flex-shrink: 0;}
         
         #post-content-view { display: none; }
-        .postTitle { margin: 24px 0; font-size: 32px; font-weight: bold; }
-        .markdown-body { padding: 20px 0; }
-
-        /* 代码块复制按钮样式优化 */
-        .markdown-body pre { position: relative; padding: 16px; background-color: var(--color-canvas-subtle); border-radius: 6px; }
-        .copy-code-btn { 
-            position: absolute; 
-            top: 8px; 
-            right: 8px; 
-            display: none; /* 默认隐藏，悬停显示 */
-            padding: 4px 8px; 
-            font-size: 12px; 
-            font-weight: 500;
-            line-height: 20px;
-            color: var(--color-fg-default);
-            background-color: var(--color-btn-bg);
-            border: 1px solid var(--color-btn-border);
+        .postTitle { margin: 24px 0; font-size: 32px; font-weight: bold; border-bottom: 1px solid var(--borderColor-muted); padding-bottom: 8px; }
+        
+        /* GitHub 原生风格代码块：不限制高度，不滚动 */
+        .markdown-body pre { 
+            position: relative; 
+            padding: 16px; 
+            font-size: 85%; 
+            line-height: 1.45; 
+            background-color: var(--color-canvas-subtle); 
             border-radius: 6px;
-            cursor: pointer;
-            z-index: 10;
+            overflow: visible; /* 确保不出现内部滚动条 */
+            white-space: pre-wrap; /* 自动换行，防止横向滚动 */
+            word-wrap: break-word;
+        }
+        .markdown-body code {
+            font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+        }
+        
+        /* 复制按钮样式 */
+        .copy-code-btn { 
+            position: absolute; top: 8px; right: 8px; display: none; padding: 4px 8px; 
+            font-size: 12px; font-weight: 500; color: var(--color-fg-default);
+            background-color: var(--color-btn-bg); border: 1px solid var(--color-btn-border);
+            border-radius: 6px; cursor: pointer; z-index: 10;
         }
         .markdown-body pre:hover .copy-code-btn { display: block; }
-        .copy-code-btn:hover { background-color: var(--color-btn-hover-bg); }
 
         @media (max-width: 600px) {
             body {padding: 15px;}
             .avatar {width:40px;height:40px;}
             .blogTitle{display:inline-block !important; font-size: 24px !important;}
-            .LabelTime{display:inline-block !important; font-size: 11px;}
-            .SideNav{min-width: 100%;}
-            .listLabels {margin-top: 4px;}
-            .SideNav-item {flex-direction: column; align-items: flex-start !important;}
-            .copy-code-btn { display: block; } /* 移动端始终显示按钮 */
+            .LabelTime { display: inline-block !important; font-size: 10px; margin-left: 4px; }
+            .copy-code-btn { display: block; } /* 移动端常显按钮 */
         }
     </style>
 </head>
@@ -130,10 +128,9 @@
     }
     changeTheme(theme, theme === "light" ? "sun" : "moon", theme === "light" ? "#ff5000" : "#00f0ff");
 
-    const now=new Date();
-    document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+    document.getElementById("copyrightYear").innerHTML=new Date().getFullYear();
     const startSite=new Date(CONFIG.startDate);
-    const diffDay=Math.floor((now-startSite)/(1000*60*60*24));
+    const diffDay=Math.floor((new Date()-startSite)/(1000*60*60*24));
     document.getElementById("runday").innerHTML="网站运行 "+diffDay+" 天";
 
     let allIssues = [];
@@ -159,7 +156,15 @@
             const item = document.createElement('a');
             item.className = 'SideNav-item d-flex flex-items-center flex-justify-between';
             item.onclick = () => showPost(index);
-            item.innerHTML = `<div class="d-flex flex-items-center"><svg class="SideNav-icon octicon" width="16" height="16"><path d="${IconList['post']}"></path></svg><span class="listTitle">${issue.title}</span></div><div class="listLabels">${labelsHtml}<span class="Label LabelTime" style="background-color:#0969da; margin-left:8px;">${issue.displayDate}</span></div>`;
+            item.innerHTML = `
+                <div class="post-item-container">
+                    <svg class="SideNav-icon octicon" width="16" height="16"><path d="${IconList['post']}"></path></svg>
+                    <span class="listTitle">${issue.title}</span>
+                </div>
+                <div class="listLabels">
+                    ${labelsHtml}
+                    <span class="Label LabelTime" style="background-color:#0969da; margin-left:8px;">${issue.displayDate}</span>
+                </div>`;
             container.appendChild(item);
         });
     }
@@ -172,7 +177,7 @@
         let cleanBody = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
         document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
-        addCopyButtons(); // 核心：渲染完成后添加按钮
+        addCopyButtons();
         window.scrollTo(0, 0);
     }
 
@@ -182,23 +187,17 @@
         window.scrollTo(0, 0);
     }
 
-    // 增强版复制按钮逻辑
     function addCopyButtons() {
         document.querySelectorAll('.markdown-body pre').forEach((pre) => {
             if(pre.querySelector('.copy-code-btn')) return;
             const btn = document.createElement('button');
             btn.className = 'copy-code-btn';
             btn.innerText = 'Copy';
-            
             btn.onclick = () => {
                 const codeText = pre.querySelector('code').innerText;
                 navigator.clipboard.writeText(codeText).then(() => {
                     btn.innerText = 'Copied!';
-                    btn.style.backgroundColor = 'var(--color-btn-success-bg)';
-                    setTimeout(() => {
-                        btn.innerText = 'Copy';
-                        btn.style.backgroundColor = 'var(--color-btn-bg)';
-                    }, 2000);
+                    setTimeout(() => btn.innerText = 'Copy', 2000);
                 });
             };
             pre.appendChild(btn);
