@@ -61,21 +61,29 @@ jobs:
             const count = posts.length;
             const lastUpdate = count > 0 ? posts[0].created_at.split('T')[0] : 'N/A';
             
+            // 头部统计信息，末尾不带 ---
             const content = `
             <div align="center">
               <img src="https://avatars.githubusercontent.com/u/64282354?v=4" width="100" style="border-radius:50%">
               <h1>Hex Blog</h1>
               <p><b>是生活玩弄了你，还是你享受了生活！</b></p>
               <p>📝 文章篇数：<b>${count}</b> &nbsp;&nbsp; 📅 最近更新：<b>${lastUpdate}</b></p>
-            </div>
+            </div>\n`;
             
-            ---
-            `;
+            let readme = fs.readFileSync('README.md', 'utf8');
             
-            const readme = fs.readFileSync('README.md', 'utf8');
-            // 替换 README 开头到第一个 --- 之间的内容
-            const newReadme = readme.replace(/[\s\S]*?(?=---|$)/, `\n${content}\n`);
-            fs.writeFileSync('README.md', newReadme);
+            // 逻辑：找到第一个 --- 的起始索引
+            const marker = "---";
+            const index = readme.indexOf(marker);
+            
+            if (index !== -1) {
+              // 保留从 --- 开始到文件结束的所有内容
+              const footer = readme.substring(index);
+              fs.writeFileSync('README.md', content + "\n" + footer);
+            } else {
+              // 如果没找到 ---，则初始化格式：统计信息 + 横线 + 原内容
+              fs.writeFileSync('README.md', content + "\n---\n\n" + readme);
+            }
 
       # --- 步骤 3: 统一提交、推送并处理保活 ---
       - name: Commit and Push
@@ -86,20 +94,17 @@ jobs:
           
           git add README.md backup/
           
-          # 检查是否有内容变化
           if git diff --staged --quiet; then
-            # 如果是定时任务触发且没有内容变化，执行保活提交
             if [ "${{ github.event_name }}" = "schedule" ]; then
-              echo "触发保活机制：更新 .keep-alive 文件"
+              echo "触发保活机制"
               date > .keep-alive
               git add .keep-alive
-              git commit -m "chore: keep-alive (prevent action suspension) [skip ci]"
+              git commit -m "chore: keep-alive [skip ci]"
               git push origin main
             else
-              echo "无内容更新，跳过推送。"
+              echo "无内容更新。"
             fi
           else
-            # 有内容更新，正常提交
             git commit -m "chore: automated backup and readme update [skip ci]"
             git pull --rebase origin main
             git push origin main
