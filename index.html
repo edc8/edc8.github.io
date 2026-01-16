@@ -19,36 +19,51 @@
     <title>Hex Blog</title>
     <style>
         html { background: url("https://api.paugram.com/bing/") center/cover no-repeat fixed; min-height: 100vh; }
-        body { box-sizing: border-box; min-width: 200px; max-width: 900px; margin: 40px auto; padding: 45px; font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; line-height: 1.5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3s; }
+        body { 
+            box-sizing: border-box; min-width: 200px; max-width: 900px; margin: 40px auto; padding: 45px; 
+            font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
+            line-height: 1.5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; 
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3s; 
+        }
         [data-color-mode="light"] body { background-color: rgba(255, 255, 255, 0.85) !important; }
         [data-color-mode="dark"] body { background-color: rgba(13, 17, 23, 0.85) !important; }
-        
+
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted);margin-bottom: 24px;}
         .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
+        .avatar:hover{transform: scale(1.1) rotate(360deg);}
         .title-left{display:flex;align-items:center;}
-        .title-left a{color:inherit;text-decoration:none;font-size:40px;font-weight: bold;font-family:Monaco;margin-left:8px;}
+        .title-left a{color:inherit;text-decoration:none;font-size:32px;font-weight: bold;font-family:Monaco;margin-left:8px;}
         .title-right{display:flex;margin:auto 0 0 auto;}
-        .title-right .circle{padding: 14px 16px; margin-left: 8px; cursor: pointer;}
+        .title-right .circle{padding: 12px; margin-left: 8px; cursor: pointer;}
 
-        /* 文章列表项 */
-        .SideNav-item { display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; background-color: rgba(128, 128, 128, 0.05) !important; border: 1px solid var(--borderColor-muted) !important; border-radius: 12px !important; transition: all 0.3s ease !important; cursor: pointer; overflow: hidden; white-space: nowrap; }
+        /* 文章列表项 - 强制单行适配手机 */
+        .SideNav-item { 
+            display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; 
+            background-color: rgba(128, 128, 128, 0.05) !important; border: 1px solid var(--borderColor-muted) !important; 
+            border-radius: 12px !important; transition: all 0.3s ease !important; cursor: pointer;
+            overflow: hidden; white-space: nowrap;
+        }
         .SideNav-item:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: var(--color-accent-emphasis) !important; }
         .post-title-container { flex: 1; overflow: hidden; text-overflow: ellipsis; margin-right: 12px; }
         .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
-        /* 分页器样式 */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--borderColor-muted); }
-        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .page-btn:hover:not(:disabled) { background: var(--color-accent-emphasis); color: white; border-color: var(--color-accent-emphasis); }
-        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        #page-info { font-weight: bold; color: var(--fgColor-default); }
+        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .page-btn:hover:not(:disabled) { background: var(--color-accent-emphasis); color: white; }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* 移动端 */
+        .copy-code-btn { position: absolute; top: 8px; right: 8px; padding: 4px 8px; font-size: 12px; color: var(--fgColor-muted); background: var(--color-canvas-default); border: 1px solid var(--borderColor-muted); border-radius: 6px; cursor: pointer; opacity: 0; }
+        pre:hover .copy-code-btn { opacity: 1; }
+        pre { position: relative; }
+
+        /* 页脚精简 */
+        #footer {margin-top:64px; text-align: center; font-size: small; color: var(--fgColor-muted);}
+
         @media (max-width: 600px) {
             body { margin: 10px; padding: 20px 15px; border-radius: 16px; }
             .title-left a { font-size: 24px !important; }
-            .avatar { width: 44px; height: 44px; }
-            .SideNav-item { padding: 12px 12px !important; }
+            .SideNav-item { padding: 12px !important; }
         }
     </style>
 </head>
@@ -59,37 +74,28 @@
             <a class="blogTitle" href="javascript:location.reload()">Hex Blog</a>
         </div>
         <div class="title-right">
-            <a id="btnHome" class="btn btn-invisible circle" onclick="showList()" title="首页" style="display:none;">
-                <svg class="octicon" width="16" height="16"><path id="pathHome"></path></svg>
-            </a>
-            <a id="btnIssue" class="btn btn-invisible circle" target="_blank" title="Issue">
-                <svg class="octicon" width="16" height="16"><path id="pathGitHub"></path></svg>
-            </a>
-            <a class="btn btn-invisible circle" onclick="modeSwitch()" title="切换主题">
-                <svg class="octicon" width="16" height="16"><path id="themeSwitch" fill-rule="evenodd"></path></svg>
-            </a>
+            <a id="btnHome" class="btn btn-invisible circle" onclick="showList()" title="首页" style="display:none;"><svg class="octicon" width="16" height="16"><path id="pathHome"></path></svg></a>
+            <a id="btnIssue" class="btn btn-invisible circle" target="_blank" title="Issue"><svg class="octicon" width="16" height="16"><path id="pathGitHub"></path></svg></a>
+            <a class="btn btn-invisible circle" onclick="modeSwitch()" title="切换主题"><svg class="octicon" width="16" height="16"><path id="themeSwitch"></path></svg></a>
         </div>
     </div>
 
     <div id="post-list-view">
         <div style="margin-bottom: 16px; color: var(--fgColor-muted); font-weight: 500;">是生活玩弄了你，还是你享受了生活！</div>
-        <nav class="SideNav" id="posts-container">
-            <div style="padding:16px;">正在加载日志...</div>
-        </nav>
+        <nav class="SideNav" id="posts-container"><div style="padding:16px;">正在加载...</div></nav>
         <div class="pagination" id="pagination-ctrl" style="display:none;">
             <button class="page-btn" id="prev-page" onclick="changePage(-1)">上一页</button>
-            <span id="page-info">第 1 页</span>
+            <span id="page-info" style="font-weight:bold;">第 1 页</span>
             <button class="page-btn" id="next-page" onclick="changePage(1)">下一页</button>
         </div>
     </div>
 
     <div id="post-content-view" style="display:none;">
-        <div class="postTitle" id="detail-title" style="margin-bottom: 24px; font-size: 32px; font-weight: 700; border-bottom: 1px solid var(--borderColor-muted); padding-bottom: 16px;"></div>
+        <div class="postTitle" id="detail-title" style="margin-bottom: 24px; font-size: 28px; font-weight: 700; border-bottom: 1px solid var(--borderColor-muted); padding-bottom: 16px;"></div>
         <article id="post-detail" class="markdown-body"></article>
     </div>
 
     <div id="footer">
-        <div id="footer1">Copyright © <span id="copyrightYear"></span> Hex Blog</div>
         <div id="footer2"><span id="runday"></span></div>
     </div>
 
@@ -98,92 +104,91 @@
         username: 'edc8',
         repo: 'edc8.github.io',
         startDate: '2025-01-19',
-        perPage: 10 // 每页显示的文章数量
+        perPage: 10
     };
 
     let currentPage = 1;
     let hasNextPage = true;
     let allIssues = [];
 
-    const Icons = {
+    const IconList = {
+        sun: 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z',
+        moon: 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z',
         home: 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z',
         github: 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'
     };
 
-    document.getElementById("pathHome").setAttribute("d", Icons.home);
-    document.getElementById("pathGitHub").setAttribute("d", Icons.github);
+    document.getElementById("pathHome").setAttribute("d", IconList.home);
+    document.getElementById("pathGitHub").setAttribute("d", IconList.github);
+    document.getElementById("btnIssue").href = `https://github.com/${CONFIG.username}/${CONFIG.repo}/issues`;
+
+    function modeSwitch() {
+        let currentMode = document.documentElement.getAttribute('data-color-mode');
+        let newMode = currentMode === "light" ? "dark" : "light";
+        localStorage.setItem("meek_theme", newMode);
+        applyTheme(newMode);
+    }
+
+    function applyTheme(mode) {
+        document.documentElement.setAttribute("data-color-mode", mode);
+        document.getElementById("themeSwitch").setAttribute("d", mode === "light" ? IconList.sun : IconList.moon);
+        document.getElementById("themeSwitch").parentNode.style.color = (mode === "light" ? "#ff5000" : "#00f0ff");
+        document.getElementById("hljs-light").disabled = (mode === "dark");
+        document.getElementById("hljs-dark").disabled = (mode === "light");
+    }
+    applyTheme(theme);
+
+    // 计算并显示运行天数
+    const diffDay = Math.floor((new Date() - new Date(CONFIG.startDate)) / (1000 * 60 * 60 * 24));
+    document.getElementById("runday").innerText = `网站运行 ${diffDay} 天`;
 
     async function fetchIssues(page = 1) {
         const container = document.getElementById('posts-container');
-        container.innerHTML = '<div style="padding:16px;">正在加载第 ' + page + ' 页日志...</div>';
-        
+        container.innerHTML = `<div style="padding:16px;">正在加载第 ${page} 页...</div>`;
         try {
-            // 增加 per_page 和 page 参数实现分页
             const response = await fetch(`https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`);
             const data = await response.json();
-            
-            if (data.length === 0 && page > 1) {
-                hasNextPage = false;
-                changePage(-1); // 如果这页没东西，退回上一页
-                return;
-            }
-
+            if (data.length === 0 && page > 1) { hasNextPage = false; changePage(-1); return; }
             allIssues = data.filter(i => !i.pull_request).map(i => {
                 const dateMatch = i.body ? i.body.match(/(?:日期|Date)[:：]\s*(\d{4}-\d{2}-\d{2})/) : null;
                 return {...i, displayDate: dateMatch ? dateMatch[1] : i.created_at.split('T')[0]};
             });
-
-            // 判断是否还有下一页（如果返回的数据量等于每页请求量，假设还有下一页）
             hasNextPage = data.length === CONFIG.perPage;
-            
             renderList();
-            updatePaginationUI();
-        } catch (e) { container.innerText = "加载失败"; }
+            document.getElementById('page-info').innerText = `第 ${currentPage} 页`;
+            document.getElementById('prev-page').disabled = (currentPage === 1);
+            document.getElementById('next-page').disabled = !hasNextPage;
+        } catch (e) { container.innerText = "加载失败，请刷新重试"; }
     }
 
     function renderList() {
         const container = document.getElementById('posts-container');
         container.innerHTML = '';
         allIssues.forEach((issue, index) => {
-            const labelsHtml = issue.labels.map(l => `<span class="Label LabelName" style="background-color:#${l.color}; color:#fff;">${l.name}</span>`).join('');
+            const labelsHtml = issue.labels.map(l => `<span class="Label" style="background-color:#${l.color}; color:#fff; font-size:10px; padding:0 6px;">${l.name}</span>`).join('');
             const item = document.createElement('a');
             item.className = 'SideNav-item';
             item.onclick = () => showPost(index);
             item.innerHTML = `
-                <div class="post-title-container">
-                    <span style="font-size:17px; font-weight:600; color:var(--fgColor-default);">${issue.title}</span>
-                </div>
-                <div class="post-meta-container">
-                    ${labelsHtml}
-                    <span class="Label" style="background-color:var(--color-neutral-muted); color:var(--fgColor-muted);">${issue.displayDate}</span>
-                </div>`;
+                <div class="post-title-container"><span style="font-size:16px; font-weight:600; color:var(--fgColor-default);">${issue.title}</span></div>
+                <div class="post-meta-container">${labelsHtml}<span class="post-date" style="color:var(--fgColor-muted); font-family:monospace;">${issue.displayDate}</span></div>`;
             container.appendChild(item);
         });
         document.getElementById('pagination-ctrl').style.display = 'flex';
     }
 
-    function updatePaginationUI() {
-        document.getElementById('page-info').innerText = `第 ${currentPage} 页`;
-        document.getElementById('prev-page').disabled = (currentPage === 1);
-        document.getElementById('next-page').disabled = !hasNextPage;
-    }
+    function changePage(delta) { currentPage += delta; fetchIssues(currentPage); window.scrollTo(0, 0); }
 
-    function changePage(delta) {
-        currentPage += delta;
-        fetchIssues(currentPage);
-        window.scrollTo(0, 0);
-    }
-
-    // --- 其余逻辑保持不变 ---
     function showPost(index) {
         const issue = allIssues[index];
         document.getElementById('post-list-view').style.display = 'none';
         document.getElementById('post-content-view').style.display = 'block';
         document.getElementById('btnHome').style.display = 'flex';
         document.getElementById('detail-title').innerText = issue.title;
-        let cleanBody = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
-        document.getElementById('post-detail').innerHTML = marked.parse(cleanBody);
+        let body = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
+        document.getElementById('post-detail').innerHTML = marked.parse(body);
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+        addCopyButtons();
         window.scrollTo(0, 0);
     }
 
@@ -194,9 +199,21 @@
         window.scrollTo(0, 0);
     }
 
-    // 初始化加载
+    function addCopyButtons() {
+        document.querySelectorAll('.markdown-body pre').forEach((pre) => {
+            if(pre.querySelector('.copy-code-btn')) return;
+            const btn = document.createElement('button');
+            btn.className = 'copy-code-btn'; btn.innerText = 'Copy';
+            btn.onclick = () => {
+                navigator.clipboard.writeText(pre.querySelector('code').innerText).then(() => {
+                    btn.innerText = 'Copied!'; setTimeout(() => btn.innerText = 'Copy', 2000);
+                });
+            };
+            pre.appendChild(btn);
+        });
+    }
+
     fetchIssues(currentPage);
-    document.getElementById("copyrightYear").innerHTML=new Date().getFullYear();
 </script>
 </body>
 </html>
