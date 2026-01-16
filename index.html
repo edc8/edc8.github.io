@@ -24,13 +24,13 @@
             font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
             line-height: 1.5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
             border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; 
-            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3s; 
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3; 
         }
         [data-color-mode="light"] body { background-color: rgba(255, 255, 255, 0.85) !important; }
         [data-color-mode="dark"] body { background-color: rgba(13, 17, 23, 0.85) !important; }
 
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted);margin-bottom: 24px;}
-        .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
+        .avatar {transition: 0.8;width:64px;height:64px;object-fit: cover;}
         .avatar:hover{transform: scale(1.1) rotate(360deg);}
         .title-left{display:flex;align-items:center;}
         .title-left a{color:inherit;text-decoration:none;font-size:32px;font-weight: bold;font-family:Monaco;margin-left:8px;}
@@ -41,7 +41,7 @@
         .SideNav-item { 
             display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; 
             background-color: rgba(128, 128, 128, 0.05) !important; border: 1px solid var(--borderColor-muted) !important; 
-            border-radius: 12px !important; transition: all 0.3s ease !important; cursor: pointer;
+            border-radius: 12px !important; transition: all 0.3 ease !important; cursor: pointer;
             overflow: hidden; white-space: nowrap;
         }
         .SideNav-item:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: var(--color-accent-emphasis) !important; }
@@ -49,7 +49,7 @@
         .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--borderColor-muted); }
-        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-size: 14px; transition: 0.2; }
         .page-btn:hover:not(:disabled) { background: var(--color-accent-emphasis); color: white; }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -140,7 +140,7 @@
 
     // 计算并显示运行天数
     const diffDay = Math.floor((new Date() - new Date(CONFIG.startDate)) / (1000 * 60 * 60 * 24));
-    document.getElementById("runday").innerText = `网站运行 ${diffDay} 天`;
+    document.getElementById("runday").innerText = `已在星空运行 ${diffDay} 天`;
 
     async function fetchIssues(page = 1) {
         const container = document.getElementById('posts-container');
