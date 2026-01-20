@@ -24,32 +24,35 @@
             font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
             line-height: 1.5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
             border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; 
-            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3; 
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3s; 
         }
         [data-color-mode="light"] body { background-color: rgba(255, 255, 255, 0.85) !important; }
         [data-color-mode="dark"] body { background-color: rgba(13, 17, 23, 0.85) !important; }
 
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted);margin-bottom: 24px;}
-        .avatar {transition: 0.8;width:64px;height:64px;object-fit: cover;}
+        .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
         .avatar:hover{transform: scale(1.1) rotate(360deg);}
         .title-left{display:flex;align-items:center;}
         .title-left a{color:inherit;text-decoration:none;font-size:32px;font-weight: bold;font-family:Monaco;margin-left:8px;}
         .title-right{display:flex;margin:auto 0 0 auto;}
         .title-right .circle{padding: 12px; margin-left: 8px; cursor: pointer;}
 
-        /* 文章列表项 - 强制单行适配手机 */
+        /* 文章列表项 - 修复移动端点击 */
         .SideNav-item { 
             display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; 
             background-color: rgba(128, 128, 128, 0.05) !important; border: 1px solid var(--borderColor-muted) !important; 
-            border-radius: 12px !important; transition: all 0.3 ease !important; cursor: pointer;
-            overflow: hidden; white-space: nowrap;
+            border-radius: 12px !important; transition: all 0.3s ease !important; cursor: pointer;
+            overflow: hidden; text-decoration: none !important;
+            user-select: none; -webkit-tap-highlight-color: rgba(0,0,0,0);
         }
         .SideNav-item:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: var(--color-accent-emphasis) !important; }
-        .post-title-container { flex: 1; overflow: hidden; text-overflow: ellipsis; margin-right: 12px; }
-        .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .SideNav-item:active { transform: scale(0.98); background-color: rgba(128, 128, 128, 0.1) !important; }
+        
+        .post-title-container { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 12px; pointer-events: none; }
+        .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; pointer-events: none; }
 
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--borderColor-muted); }
-        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-size: 14px; transition: 0.2; }
+        .page-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--borderColor-muted); background: var(--color-canvas-subtle); cursor: pointer; font-size: 14px; transition: 0.2s; }
         .page-btn:hover:not(:disabled) { background: var(--color-accent-emphasis); color: white; }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -57,7 +60,6 @@
         pre:hover .copy-code-btn { opacity: 1; }
         pre { position: relative; }
 
-        /* 页脚精简 */
         #footer {margin-top:64px; text-align: center; font-size: small; color: var(--fgColor-muted);}
 
         @media (max-width: 600px) {
@@ -138,7 +140,6 @@
     }
     applyTheme(theme);
 
-    // 计算并显示运行天数
     const diffDay = Math.floor((new Date() - new Date(CONFIG.startDate)) / (1000 * 60 * 60 * 24));
     document.getElementById("runday").innerText = `已在星空运行 ${diffDay} 天`;
 
@@ -168,10 +169,19 @@
             const labelsHtml = issue.labels.map(l => `<span class="Label" style="background-color:#${l.color}; color:#fff; font-size:10px; padding:0 6px;">${l.name}</span>`).join('');
             const item = document.createElement('a');
             item.className = 'SideNav-item';
-            item.onclick = () => showPost(index);
+            item.href = "javascript:void(0)";
+            item.onclick = (e) => {
+                e.preventDefault();
+                showPost(index);
+            };
             item.innerHTML = `
-                <div class="post-title-container"><span style="font-size:16px; font-weight:600; color:var(--fgColor-default);">${issue.title}</span></div>
-                <div class="post-meta-container">${labelsHtml}<span class="post-date" style="color:var(--fgColor-muted); font-family:monospace;">${issue.displayDate}</span></div>`;
+                <div class="post-title-container">
+                    <span style="font-size:16px; font-weight:600; color:var(--fgColor-default);">${issue.title}</span>
+                </div>
+                <div class="post-meta-container">
+                    ${labelsHtml}
+                    <span class="post-date" style="color:var(--fgColor-muted); font-family:monospace;">${issue.displayDate}</span>
+                </div>`;
             container.appendChild(item);
         });
         document.getElementById('pagination-ctrl').style.display = 'flex';
@@ -189,14 +199,14 @@
         document.getElementById('post-detail').innerHTML = marked.parse(body);
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
         addCopyButtons();
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     function showList() {
         document.getElementById('post-list-view').style.display = 'block';
         document.getElementById('post-content-view').style.display = 'none';
         document.getElementById('btnHome').style.display = 'none';
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     function addCopyButtons() {
