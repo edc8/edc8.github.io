@@ -2,7 +2,7 @@
 <html data-color-mode="light" data-dark-theme="dark_colorblind" data-light-theme="light" lang="zh-CN">
 <head>
     <meta content="text/html; charset=utf-8" http-equiv="content-type" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light">
@@ -18,16 +18,28 @@
     </script>
     <title>Hex Blog</title>
     <style>
-        html { background: url("https://api.paugram.com/bing/") center/cover no-repeat fixed; min-height: 100vh; }
+        /* --- 背景修改部分 --- */
+        html { 
+            min-height: 100vh;
+        }
+        /* 根据明暗模式设置网页底色 */
+        [data-color-mode="light"] html { background-color: #f6f8fa; }
+        [data-color-mode="dark"] html { background-color: #0d1117; }
+
         body { 
             box-sizing: border-box; min-width: 200px; max-width: 900px; margin: 40px auto; padding: 45px; 
             font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
-            line-height: 1.5; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; 
-            box-shadow: 0 12px 40px rgba(0,0,0,0.25); transition: background-color 0.3s; 
+            line-height: 1.5; 
+            /* 取消了毛玻璃，改用实色边框，彻底杜绝闪屏 */
+            border: 1px solid var(--borderColor-muted); 
+            border-radius: 20px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); 
+            transition: background-color 0.3s;
+            transform: translateZ(0);
         }
-        [data-color-mode="light"] body { background-color: rgba(255, 255, 255, 0.85) !important; }
-        [data-color-mode="dark"] body { background-color: rgba(13, 17, 23, 0.85) !important; }
+        [data-color-mode="light"] body { background-color: #ffffff !important; }
+        [data-color-mode="dark"] body { background-color: #161b22 !important; }
+        /* ------------------ */
 
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted);margin-bottom: 24px;}
         .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
@@ -37,16 +49,17 @@
         .title-right{display:flex;margin:auto 0 0 auto;}
         .title-right .circle{padding: 12px; margin-left: 8px; cursor: pointer;}
 
-        /* 文章列表项 - 修复移动端点击 */
         .SideNav-item { 
             display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; 
-            background-color: rgba(128, 128, 128, 0.05) !important; border: 1px solid var(--borderColor-muted) !important; 
-            border-radius: 12px !important; transition: all 0.3s ease !important; cursor: pointer;
-            overflow: hidden; text-decoration: none !important;
-            user-select: none; -webkit-tap-highlight-color: rgba(0,0,0,0);
+            background-color: var(--color-canvas-subtle) !important; border: 1px solid var(--borderColor-muted) !important; 
+            border-radius: 12px !important; transition: transform 0.2s, border-color 0.2s !important; 
+            cursor: pointer; overflow: hidden; text-decoration: none !important;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        .SideNav-item:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: var(--color-accent-emphasis) !important; }
-        .SideNav-item:active { transform: scale(0.98); background-color: rgba(128, 128, 128, 0.1) !important; }
+        .SideNav-item:hover { border-color: var(--color-accent-emphasis) !important; }
+        .SideNav-item:active { transform: scale(0.97); }
         
         .post-title-container { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 12px; pointer-events: none; }
         .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; pointer-events: none; }
@@ -63,9 +76,9 @@
         #footer {margin-top:64px; text-align: center; font-size: small; color: var(--fgColor-muted);}
 
         @media (max-width: 600px) {
-            body { margin: 10px; padding: 20px 15px; border-radius: 16px; }
+            body { margin: 10px; padding: 20px 15px; border-radius: 16px; border: none; box-shadow: none; }
             .title-left a { font-size: 24px !important; }
-            .SideNav-item { padding: 12px !important; }
+            .SideNav-item { padding: 12px 15px !important; }
         }
     </style>
 </head>
@@ -145,7 +158,7 @@
 
     async function fetchIssues(page = 1) {
         const container = document.getElementById('posts-container');
-        container.innerHTML = `<div style="padding:16px;">正在加载第 ${page} 页...</div>`;
+        container.innerHTML = `<div style="padding:16px;">正在加载...</div>`;
         try {
             const response = await fetch(`https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`);
             const data = await response.json();
@@ -166,7 +179,7 @@
         const container = document.getElementById('posts-container');
         container.innerHTML = '';
         allIssues.forEach((issue, index) => {
-            const labelsHtml = issue.labels.map(l => `<span class="Label" style="background-color:#${l.color}; color:#fff; font-size:10px; padding:0 6px;">${l.name}</span>`).join('');
+            const labelsHtml = issue.labels.map(l => `<span class="Label" style="background-color:#${l.color}; color:#fff; font-size:10px; padding:2px 6px; border-radius:10px;">${l.name}</span>`).join('');
             const item = document.createElement('a');
             item.className = 'SideNav-item';
             item.href = "javascript:void(0)";
@@ -180,14 +193,14 @@
                 </div>
                 <div class="post-meta-container">
                     ${labelsHtml}
-                    <span class="post-date" style="color:var(--fgColor-muted); font-family:monospace;">${issue.displayDate}</span>
+                    <span class="post-date" style="color:var(--fgColor-muted); font-family:monospace; margin-left:4px;">${issue.displayDate}</span>
                 </div>`;
             container.appendChild(item);
         });
         document.getElementById('pagination-ctrl').style.display = 'flex';
     }
 
-    function changePage(delta) { currentPage += delta; fetchIssues(currentPage); window.scrollTo(0, 0); }
+    function changePage(delta) { currentPage += delta; fetchIssues(currentPage); window.scrollTo({top: 0, behavior: 'instant'}); }
 
     function showPost(index) {
         const issue = allIssues[index];
@@ -199,14 +212,14 @@
         document.getElementById('post-detail').innerHTML = marked.parse(body);
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
         addCopyButtons();
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        window.scrollTo({top: 0, behavior: 'instant'});
     }
 
     function showList() {
         document.getElementById('post-list-view').style.display = 'block';
         document.getElementById('post-content-view').style.display = 'none';
         document.getElementById('btnHome').style.display = 'none';
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        window.scrollTo({top: 0, behavior: 'instant'});
     }
 
     function addCopyButtons() {
