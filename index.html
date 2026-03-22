@@ -22,7 +22,6 @@
         html { 
             min-height: 100vh;
         }
-        /* 根据明暗模式设置网页底色 */
         [data-color-mode="light"] html { background-color: #f6f8fa; }
         [data-color-mode="dark"] html { background-color: #0d1117; }
 
@@ -30,7 +29,6 @@
             box-sizing: border-box; min-width: 200px; max-width: 900px; margin: 40px auto; padding: 45px; 
             font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
             line-height: 1.5; 
-            /* 取消了毛玻璃，改用实色边框，彻底杜绝闪屏 */
             border: 1px solid var(--borderColor-muted); 
             border-radius: 20px; 
             box-shadow: 0 8px 24px rgba(0,0,0,0.1); 
@@ -39,7 +37,6 @@
         }
         [data-color-mode="light"] body { background-color: #ffffff !important; }
         [data-color-mode="dark"] body { background-color: #161b22 !important; }
-        /* ------------------ */
 
         #header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted);margin-bottom: 24px;}
         .avatar {transition: 0.8s;width:64px;height:64px;object-fit: cover;}
@@ -237,6 +234,43 @@
     }
 
     fetchIssues(currentPage);
+</script>
+
+<script>
+// 自动替换所有GitHub链接为gh-proxy加速
+(()=>{
+    const domains = ['github.com','raw.githubusercontent.com','gist.githubusercontent.com','github.io'];
+    const replaceLinks = () => {
+        document.querySelectorAll('a[href^="http"]').forEach(a => {
+            const h = a.href;
+            if (!h.includes('gh-proxy.org') && domains.some(m => h.includes(m))) {
+                a.href = `https://gh-proxy.org/${h}`;
+                a.target = '_blank';
+                if(!a.title.includes('gh-proxy')) a.title += ' (gh-proxy加速)';
+            }
+        });
+    };
+    
+    // 初始化执行
+    replaceLinks();
+    window.addEventListener('load', replaceLinks);
+
+    // 拦截文章展示，处理详情页链接
+    const originalShowPost = window.showPost;
+    window.showPost = (i) => {
+        if(originalShowPost) originalShowPost(i);
+        setTimeout(replaceLinks, 300); // 等待Markdown渲染完毕
+    };
+
+    // 拦截列表加载，处理列表链接
+    const originalFetch = window.fetchIssues;
+    window.fetchIssues = (p=1) => {
+        return originalFetch(p).then(res => {
+            setTimeout(replaceLinks, 300);
+            return res;
+        });
+    };
+})();
 </script>
 </body>
 </html>
