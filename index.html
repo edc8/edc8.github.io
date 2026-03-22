@@ -1,20 +1,14 @@
 <!DOCTYPE html>
 <html data-color-mode="light" data-dark-theme="dark_colorblind" data-light-theme="light" lang="zh-CN">
 <head>
-    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
-    <script>
-        (function() {
-            var currentHost = window.location.hostname;
-            // 只有在访问原生 github.io 域名时才触发跳转
-            if (currentHost === "edc8.github.io") {
-                // 使用 ghp.ci 代理整个网页地址
-                window.location.replace("https://ghp.ci/" + window.location.href);
-            }
-        })();
-    </script>
+    <link rel="preconnect" href="https://api.github.com">
+    <link rel="dns-prefetch" href="https://api.github.com">
+    <link rel="preconnect" href="https://avatars.githubusercontent.com">
+    <link rel="preconnect" href="https://mirrors.sustech.edu.cn">
 
     <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light">
@@ -30,7 +24,6 @@
     </script>
     <title>Hex Blog</title>
     <style>
-        /* --- 背景修改部分 --- */
         html { min-height: 100vh; }
         [data-color-mode="light"] html { background-color: #f6f8fa; }
         [data-color-mode="dark"] html { background-color: #0d1117; }
@@ -38,12 +31,8 @@
         body { 
             box-sizing: border-box; min-width: 200px; max-width: 900px; margin: 40px auto; padding: 45px; 
             font-size: 16px; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; 
-            line-height: 1.5; 
-            border: 1px solid var(--borderColor-muted); 
-            border-radius: 20px; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1); 
-            transition: background-color 0.3s;
-            transform: translateZ(0);
+            line-height: 1.5; border: 1px solid var(--borderColor-muted); border-radius: 20px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); transition: background-color 0.3s;
         }
         [data-color-mode="light"] body { background-color: #ffffff !important; }
         [data-color-mode="dark"] body { background-color: #161b22 !important; }
@@ -60,14 +49,22 @@
             display: flex !important; align-items: center !important; padding: 16px 20px !important; margin-bottom: 12px !important; 
             background-color: var(--color-canvas-subtle) !important; border: 1px solid var(--borderColor-muted) !important; 
             border-radius: 12px !important; transition: transform 0.2s, border-color 0.2s !important; 
-            cursor: pointer; overflow: hidden; text-decoration: none !important;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
+            cursor: pointer; text-decoration: none !important;
         }
-        .SideNav-item:hover { border-color: var(--color-accent-emphasis) !important; }
-        .SideNav-item:active { transform: scale(0.97); }
+        .SideNav-item:hover { border-color: var(--color-accent-emphasis) !important; transform: translateY(-2px); }
+        .SideNav-item:active { transform: scale(0.98); }
         
+        /* 2. 优化：骨架屏动画 */
+        @keyframes shimmer {
+            0% { background-position: -468px 0 }
+            100% { background-position: 468px 0 }
+        }
+        .skeleton-item {
+            height: 60px; margin-bottom: 12px; border-radius: 12px;
+            background: linear-gradient(to right, var(--color-canvas-subtle) 8%, var(--borderColor-muted) 18%, var(--color-canvas-subtle) 33%);
+            background-size: 800px 104px; animation: shimmer 1.5s infinite linear;
+        }
+
         .post-title-container { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 12px; pointer-events: none; }
         .post-meta-container { display: flex; align-items: center; gap: 6px; flex-shrink: 0; pointer-events: none; }
 
@@ -104,7 +101,7 @@
 
     <div id="post-list-view">
         <div style="margin-bottom: 16px; color: var(--fgColor-muted); font-weight: 500;">是生活玩弄了你，还是你享受了生活！</div>
-        <nav class="SideNav" id="posts-container"><div style="padding:16px;">正在加载...</div></nav>
+        <nav class="SideNav" id="posts-container"></nav>
         <div class="pagination" id="pagination-ctrl" style="display:none;">
             <button class="page-btn" id="prev-page" onclick="changePage(-1)">上一页</button>
             <span id="page-info" style="font-weight:bold;">第 1 页</span>
@@ -126,7 +123,8 @@
         username: 'edc8',
         repo: 'edc8.github.io',
         startDate: '2025-01-19',
-        perPage: 10
+        perPage: 10,
+        cacheTime: 10 * 60 * 1000 // 缓存有效时长：10分钟
     };
 
     let currentPage = 1;
@@ -163,25 +161,49 @@
     const diffDay = Math.floor((new Date() - new Date(CONFIG.startDate)) / (1000 * 60 * 60 * 24));
     document.getElementById("runday").innerText = `已在星空运行 ${diffDay} 天`;
 
+    // 3. 性能优化：带缓存的 API 请求
     async function fetchIssues(page = 1) {
         const container = document.getElementById('posts-container');
-        container.innerHTML = `<div style="padding:16px;">正在加载...</div>`;
+        const cacheKey = `posts_v1_page_${page}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed.time < CONFIG.cacheTime) {
+                allIssues = parsed.data;
+                hasNextPage = parsed.hasNextPage;
+                renderList();
+                updatePaginationControls();
+                return;
+            }
+        }
+
+        // 显示骨架屏
+        container.innerHTML = Array(CONFIG.perPage).fill('<div class="skeleton-item"></div>').join('');
+        
         try {
-            // 【加速修改】：将 API 请求通过 mirror.ghproxy.com 代理，解决加载转圈慢的问题
-            const apiUrl = `https://mirror.ghproxy.com/https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`;
-            const response = await fetch(apiUrl);
+            const response = await fetch(`https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`);
             const data = await response.json();
+            
             if (data.length === 0 && page > 1) { hasNextPage = false; changePage(-1); return; }
+            
             allIssues = data.filter(i => !i.pull_request).map(i => {
                 const dateMatch = i.body ? i.body.match(/(?:日期|Date)[:：]\s*(\d{4}-\d{2}-\d{2})/) : null;
                 return {...i, displayDate: dateMatch ? dateMatch[1] : i.created_at.split('T')[0]};
             });
+            
             hasNextPage = data.length === CONFIG.perPage;
+            
+            // 写入缓存
+            localStorage.setItem(cacheKey, JSON.stringify({
+                time: Date.now(),
+                data: allIssues,
+                hasNextPage: hasNextPage
+            }));
+
             renderList();
-            document.getElementById('page-info').innerText = `第 ${currentPage} 页`;
-            document.getElementById('prev-page').disabled = (currentPage === 1);
-            document.getElementById('next-page').disabled = !hasNextPage;
-        } catch (e) { container.innerText = "加载失败，请刷新重试"; }
+            updatePaginationControls();
+        } catch (e) { container.innerHTML = '<div style="padding:16px;">加载失败，请刷新页面。</div>'; }
     }
 
     function renderList() {
@@ -192,10 +214,7 @@
             const item = document.createElement('a');
             item.className = 'SideNav-item';
             item.href = "javascript:void(0)";
-            item.onclick = (e) => {
-                e.preventDefault();
-                showPost(index);
-            };
+            item.onclick = (e) => { e.preventDefault(); showPost(index); };
             item.innerHTML = `
                 <div class="post-title-container">
                     <span style="font-size:16px; font-weight:600; color:var(--fgColor-default);">${issue.title}</span>
@@ -206,10 +225,21 @@
                 </div>`;
             container.appendChild(item);
         });
+        if(typeof replaceLinks === 'function') replaceLinks();
+    }
+
+    function updatePaginationControls() {
+        document.getElementById('page-info').innerText = `第 ${currentPage} 页`;
+        document.getElementById('prev-page').disabled = (currentPage === 1);
+        document.getElementById('next-page').disabled = !hasNextPage;
         document.getElementById('pagination-ctrl').style.display = 'flex';
     }
 
-    function changePage(delta) { currentPage += delta; fetchIssues(currentPage); window.scrollTo({top: 0, behavior: 'instant'}); }
+    function changePage(delta) { 
+        currentPage += delta; 
+        fetchIssues(currentPage); 
+        window.scrollTo({top: 0, behavior: 'instant'}); 
+    }
 
     function showPost(index) {
         const issue = allIssues[index];
@@ -217,11 +247,19 @@
         document.getElementById('post-content-view').style.display = 'block';
         document.getElementById('btnHome').style.display = 'flex';
         document.getElementById('detail-title').innerText = issue.title;
+        
         let body = issue.body ? issue.body.replace(/(?:日期|Date)[:：]\s*\d{4}-\d{2}-\d{2}/, '').trim() : '';
         document.getElementById('post-detail').innerHTML = marked.parse(body);
+        
+        // 4. 图片懒加载优化
+        document.querySelectorAll('#post-detail img').forEach(img => {
+            img.setAttribute('loading', 'lazy');
+        });
+
         document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
         addCopyButtons();
         window.scrollTo({top: 0, behavior: 'instant'});
+        if(typeof replaceLinks === 'function') replaceLinks();
     }
 
     function showList() {
@@ -246,41 +284,22 @@
     }
 
     fetchIssues(currentPage);
-</script>
 
-<script>
-// 自动替换页面内所有 GitHub 相关超链接，确保“出门”加速
-(()=>{
-    const domains = ['github.com','raw.githubusercontent.com','gist.githubusercontent.com','github.io'];
-    const replaceLinks = () => {
-        document.querySelectorAll('a[href^="http"]').forEach(a => {
-            const h = a.href;
-            // 避免重复加速
-            if (!h.includes('gh-proxy.org') && !h.includes('ghp.ci') && domains.some(m => h.includes(m))) {
-                a.href = `https://gh-proxy.org/${h}`;
-                a.target = '_blank';
-                if(!a.title.includes('gh-proxy')) a.title += ' (gh-proxy加速)';
+    // 5. GH-Proxy 加速逻辑
+    function replaceLinks() {
+        const domains = ['github.com','raw.githubusercontent.com','gist.githubusercontent.com','github.io'];
+        document.querySelectorAll('a[href^="http"], img[src^="http"]').forEach(el => {
+            const attr = el.tagName === 'A' ? 'href' : 'src';
+            const url = el[attr];
+            if (url && !url.includes('gh-proxy.org') && domains.some(m => url.includes(m))) {
+                el[attr] = `https://gh-proxy.org/${url}`;
+                if(el.tagName === 'A') {
+                    el.target = '_blank';
+                    if(!el.title.includes('gh-proxy')) el.title += ' (加速访问)';
+                }
             }
         });
     };
-    
-    replaceLinks();
-    window.addEventListener('load', replaceLinks);
-
-    const originalShowPost = window.showPost;
-    window.showPost = (i) => {
-        if(originalShowPost) originalShowPost(i);
-        setTimeout(replaceLinks, 300);
-    };
-
-    const originalFetch = window.fetchIssues;
-    window.fetchIssues = (p=1) => {
-        return originalFetch(p).then(res => {
-            setTimeout(replaceLinks, 300);
-            return res;
-        });
-    };
-})();
 </script>
 </body>
 </html>
