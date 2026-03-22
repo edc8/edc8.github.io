@@ -4,6 +4,18 @@
     <meta content="text/html; charset=utf-8" http-equiv="content-type" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <script>
+        (function() {
+            var currentHost = window.location.hostname;
+            // 只有在访问原生 github.io 域名时才触发跳转
+            if (currentHost === "edc8.github.io") {
+                // 使用 ghp.ci 代理整个网页地址
+                window.location.replace("https://ghp.ci/" + window.location.href);
+            }
+        })();
+    </script>
+
     <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" id="hljs-dark" disabled>
@@ -19,9 +31,7 @@
     <title>Hex Blog</title>
     <style>
         /* --- 背景修改部分 --- */
-        html { 
-            min-height: 100vh;
-        }
+        html { min-height: 100vh; }
         [data-color-mode="light"] html { background-color: #f6f8fa; }
         [data-color-mode="dark"] html { background-color: #0d1117; }
 
@@ -157,7 +167,9 @@
         const container = document.getElementById('posts-container');
         container.innerHTML = `<div style="padding:16px;">正在加载...</div>`;
         try {
-            const response = await fetch(`https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`);
+            // 【加速修改】：将 API 请求通过 mirror.ghproxy.com 代理，解决加载转圈慢的问题
+            const apiUrl = `https://mirror.ghproxy.com/https://api.github.com/repos/${CONFIG.username}/${CONFIG.repo}/issues?creator=${CONFIG.username}&state=open&per_page=${CONFIG.perPage}&page=${page}`;
+            const response = await fetch(apiUrl);
             const data = await response.json();
             if (data.length === 0 && page > 1) { hasNextPage = false; changePage(-1); return; }
             allIssues = data.filter(i => !i.pull_request).map(i => {
@@ -237,13 +249,14 @@
 </script>
 
 <script>
-// 自动替换所有GitHub链接为gh-proxy加速
+// 自动替换页面内所有 GitHub 相关超链接，确保“出门”加速
 (()=>{
     const domains = ['github.com','raw.githubusercontent.com','gist.githubusercontent.com','github.io'];
     const replaceLinks = () => {
         document.querySelectorAll('a[href^="http"]').forEach(a => {
             const h = a.href;
-            if (!h.includes('gh-proxy.org') && domains.some(m => h.includes(m))) {
+            // 避免重复加速
+            if (!h.includes('gh-proxy.org') && !h.includes('ghp.ci') && domains.some(m => h.includes(m))) {
                 a.href = `https://gh-proxy.org/${h}`;
                 a.target = '_blank';
                 if(!a.title.includes('gh-proxy')) a.title += ' (gh-proxy加速)';
@@ -251,18 +264,15 @@
         });
     };
     
-    // 初始化执行
     replaceLinks();
     window.addEventListener('load', replaceLinks);
 
-    // 拦截文章展示，处理详情页链接
     const originalShowPost = window.showPost;
     window.showPost = (i) => {
         if(originalShowPost) originalShowPost(i);
-        setTimeout(replaceLinks, 300); // 等待Markdown渲染完毕
+        setTimeout(replaceLinks, 300);
     };
 
-    // 拦截列表加载，处理列表链接
     const originalFetch = window.fetchIssues;
     window.fetchIssues = (p=1) => {
         return originalFetch(p).then(res => {
